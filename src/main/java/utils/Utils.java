@@ -18,16 +18,55 @@ package utils;
 
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileNotFoundException;
+import java.io.FileOutputStream;
+import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
+import java.util.Map;
+
+import org.apache.commons.io.FileUtils;
+import org.large.collections.OffHeapMap;
 
 public class Utils {
+    public  static void serialize(Object obj,File f) {
+        try{
+            FileOutputStream fileOut =
+                    new FileOutputStream(f);
+            ByteArrayOutputStream b = new ByteArrayOutputStream();
+            ObjectOutputStream out = new ObjectOutputStream(fileOut);
+            out.writeObject(obj);
+            out.close();
+            fileOut.close();
+        }
+        catch(Exception ex){
+            throw new RuntimeException(ex);
+        }
+    }
+
+    public  static Map deserialize(File f) {
+        try
+        {
+           FileInputStream fileIn = new FileInputStream(f);
+           ObjectInputStream in = new ObjectInputStream(fileIn);
+           Map m= (Map) in.readObject();
+           in.close();
+           fileIn.close();
+           return m;
+        }catch(Exception ex)
+        {
+            throw new RuntimeException(ex);
+        }
+    }
 
     public  static byte[] serialize(Object obj) {
         try{
             ByteArrayOutputStream b = new ByteArrayOutputStream();
             ObjectOutputStream o = new ObjectOutputStream(b);
             o.writeObject(obj);
+            
             return b.toByteArray();
         }
         catch(Exception ex){
@@ -45,6 +84,12 @@ public class Utils {
             throw new RuntimeException(ex);
         }
     }
+    
+    public  static byte[] serialize(byte[] obj) {
+       return obj;
+    }
+    
+
 
     public static int sizeof(Class dataType)
     {
@@ -61,4 +106,21 @@ public class Utils {
         return 4; // 32-bit memory pointer... 
                   // (I'm not sure how this works on a 64-bit OS)
     }
+    
+    public static void cleanup(Map map){
+        if(!(map instanceof OffHeapMap)){
+            throw new RuntimeException("Invalid Map Subtype. Should be of type OffHeapMap");
+        }
+        ((OffHeapMap)map).delete();
+    }
+    public  static void delete(File f) throws IOException {
+        if (f.isDirectory()) {
+            System.err.println("DD");
+          for (File c : f.listFiles()){
+              System.err.println("DD="+c.getAbsolutePath());
+              FileUtils.deleteQuietly(c);
+              System.err.println("Deleted="+c.getAbsolutePath());
+          }
+        }
+      }
 }
