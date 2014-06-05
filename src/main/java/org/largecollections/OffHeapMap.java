@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.large.collections;
+package org.largecollections;
 
 import static org.fusesource.leveldbjni.JniDBFactory.bytes;
 import static org.fusesource.leveldbjni.JniDBFactory.factory;
@@ -29,7 +29,7 @@ import java.util.Map;
 import java.util.Random;
 import java.util.Set;
 
-import org.apache.commons.lang3.StringUtils;
+import org.apache.commons.lang.StringUtils;
 import org.iq80.leveldb.DB;
 import org.iq80.leveldb.DBComparator;
 import org.iq80.leveldb.DBIterator;
@@ -42,6 +42,7 @@ import utils.Utils;
 import com.google.common.base.Throwables;
 
 public class OffHeapMap<K, V> implements Map<K, V>, Serializable {
+    public  static final long serialVersionUID = 1l;
     private final static Random rnd = new Random();
     public static String DEFAULT_FOLDER = System.getProperty("java.io.tmpdir");
     public static String DEFAULT_NAME = "TMP" + rnd.nextInt(1000000);
@@ -49,32 +50,36 @@ public class OffHeapMap<K, V> implements Map<K, V>, Serializable {
 
     private String folder = DEFAULT_FOLDER;
     private String name = DEFAULT_NAME;
-   
+
     private transient DB db;
     private int cacheSize = DEFAULT_CACHE_SIZE;
     private String dbComparatorCls = null;
 
     // private transient DBComparator comparator = null;
 
-    private static DB createDB(String folderName,String name, int cacheSize, String comparatorCls) {
+    private static DB createDB(String folderName, String name, int cacheSize,
+            String comparatorCls) {
         DB db = null;
         try {
             Options options = new Options();
             options.cacheSize(cacheSize * 1048576); // 100MB cache
-            //options.createIfMissing(true);
+            ;
 
             if (comparatorCls != null) {
                 Class c = Class.forName(comparatorCls);
                 options.comparator((DBComparator) c.newInstance());
             }
-            db = factory.open(new File(folderName+File.separator+name), options);
+            db = factory.open(new File(folderName + File.separator + name),
+                    options);
         } catch (Exception ex) {
             Throwables.propagate(ex);
         }
         return db;
 
     }
-    private static DB recreateDB(String folderName,String name, int cacheSize, String comparatorCls) {
+
+    private static DB recreateDB(String folderName, String name, int cacheSize,
+            String comparatorCls) {
         DB db = null;
         try {
             Options options = new Options();
@@ -83,7 +88,8 @@ public class OffHeapMap<K, V> implements Map<K, V>, Serializable {
                 Class c = Class.forName(comparatorCls);
                 options.comparator((DBComparator) c.newInstance());
             }
-            db = factory.open(new File(folderName+File.separator+name), options);
+            db = factory.open(new File(folderName + File.separator + name),
+                    options);
         } catch (Exception ex) {
             Throwables.propagate(ex);
         }
@@ -92,7 +98,7 @@ public class OffHeapMap<K, V> implements Map<K, V>, Serializable {
     }
 
     private DB createDB() {
-        return OffHeapMap.createDB(this.folder,this.name, this.cacheSize,
+        return OffHeapMap.createDB(this.folder, this.name, this.cacheSize,
                 this.dbComparatorCls);
     }
 
@@ -109,7 +115,7 @@ public class OffHeapMap<K, V> implements Map<K, V>, Serializable {
             if (cacheSize > 0)
                 this.cacheSize = cacheSize;
             this.dbComparatorCls = comparatorCls;
-            this.db = this.createDB(this.folder,this.name, this.cacheSize,
+            this.db = this.createDB(this.folder, this.name, this.cacheSize,
                     this.dbComparatorCls);
 
         } catch (Exception ex) {
@@ -205,11 +211,12 @@ public class OffHeapMap<K, V> implements Map<K, V>, Serializable {
 
     }
 
-    private String getPath(){
-        return this.folder+File.separator+this.name;
+    private String getPath() {
+        return this.folder + File.separator + this.name;
     }
-    
-    private boolean recreate=false;
+
+    private boolean recreate = false;
+
     public void clear() {
         boolean exit = false;
         int counter = 0;
@@ -219,41 +226,44 @@ public class OffHeapMap<K, V> implements Map<K, V>, Serializable {
             try {
                 if (counter == 0) {
                     this.db.close();
-                    closed=true;
-                    Thread.sleep(1000);
-                   
+                    closed = true;
+
                 }
-                if(closed){
-                    factory.destroy(new File(this.getPath()), new Options());
-                    destroyed=true;
+                if (closed) {
                     Thread.sleep(1000);
+                    // factory.destroy(new File(this.getPath()), new Options());
+                    Utils.delete(new File(this.getPath()));
+                    destroyed = true;
                 }
-                if(recreate && destroyed)
+                if (recreate && destroyed)
                     this.createDB();
                 exit = true;
             } catch (Exception ex) {
                 // /Throwables.propagate(ex);
+                ex.printStackTrace();
                 counter++;
+
                 if (counter == 5) {
                     Throwables.propagate(ex);
                 }
-            }
-            finally{
-                recreate=false;
+            } finally {
+                recreate = false;
             }
         }
 
     }
 
     public void delete() {
-        this.recreate=true;
+        this.recreate = true;
         this.clear();
     }
+
+
+
 
     public Set<K> keySet() {
         return new OffHeapSet<K>(this);
     }
-
     public Collection<V> values() {
         return new OffHeapCollection(this);
     }
@@ -266,23 +276,40 @@ public class OffHeapMap<K, V> implements Map<K, V>, Serializable {
     private DB getDb() {
         return db;
     }
+
     private void writeObject(java.io.ObjectOutputStream stream)
             throws IOException {
-        this.db.close();
+
+        //this.db.resumeCompactions();
+        
+
+        try {
+            Thread.sleep(2000);
+        } catch (Exception ex) {
+            ex.printStackTrace();
+        }
+
         stream.writeObject(this.folder);
         stream.writeObject(this.name);
         stream.writeInt(this.cacheSize);
         stream.writeObject(this.dbComparatorCls);
-        
+        //ReadOptions options = new ReadOptions();
+        //this.db.iterator(arg0)
+        //this.db.iterator().close();
+        //this.db.close();
+        //this.db=null;
     }
-    private void readObject(java.io.ObjectInputStream in)
-            throws IOException, ClassNotFoundException {
-        this.folder = (String)in.readObject();
-        this.name = (String)in.readObject();
+
+    private void readObject(java.io.ObjectInputStream in) throws IOException,
+            ClassNotFoundException {
+        this.folder = (String) in.readObject();
+        this.name = (String) in.readObject();
         this.cacheSize = in.readInt();
-        this.dbComparatorCls = (String)in.readObject();
-        this.db=this.recreateDB(this.folder,this.name, this.cacheSize, this.dbComparatorCls);
-        }
+        this.dbComparatorCls = (String) in.readObject();
+        this.db = this.createDB(this.folder, this.name, this.cacheSize,
+                this.dbComparatorCls);
+    }
+
     /**
      * @param args
      */
@@ -499,8 +526,17 @@ public class OffHeapMap<K, V> implements Map<K, V>, Serializable {
         private DBIterator iter = null;
 
         public EntryIterator(OffHeapMap map) {
-            this.iter = map.getDb().iterator();
-            this.iter.seekToFirst();
+
+            try {
+                this.iter = map.getDb().iterator();
+                //this.iter.close();
+                if(this.iter.hasPrev())
+                    this.iter.seekToLast();
+                this.iter.seekToFirst();
+            } catch (Exception ex) {
+                Throwables.propagate(ex);
+            }
+
         }
 
         public boolean hasNext() {
@@ -522,22 +558,9 @@ public class OffHeapMap<K, V> implements Map<K, V>, Serializable {
 
     }
 
-    public static void main(String[] args) {
-
-        Map<String, String> map = new OffHeapMap<String, String>("c:/tmp/",
-                "bigsynapse");
-        int max = 1000;
-        long ts = System.currentTimeMillis();
-
-        for (int i = 0; i < max; i++) {
-            map.put(Integer.toString(i), Integer.toString(i));
-        }
-
-        System.err.println("Time to insert a  " + (max / 10) + " rows "
-                + (System.currentTimeMillis() - ts));
-
+    private static void read(Map<String, String> map) {
         Random rnd = new Random();
-        ts = System.currentTimeMillis();
+        Long ts = System.currentTimeMillis();
         for (int i = 0; i < max; i++) {
             String k = Integer.toString(rnd.nextInt(max));
             String v = map.get(k);
@@ -545,6 +568,23 @@ public class OffHeapMap<K, V> implements Map<K, V>, Serializable {
                 System.out.println(k + "=" + v);
             }
         }
+        System.err.println("Time to read a  " + max + " rows "
+                + (System.currentTimeMillis() - ts));
+    }
+
+    private static void write(Map<String, String> map) {
+        long ts = System.currentTimeMillis();
+
+        for (int i = 0; i < max; i++) {
+            map.put(Integer.toString(i), Integer.toString(i));
+        }
+
+        System.err.println("Time to insert a  " + max + " rows "
+                + (System.currentTimeMillis() - ts));
+    }
+
+    private static void readEntrySet(Map<String, String> map) {
+        long ts = System.currentTimeMillis();
 
         Set<Map.Entry<String, String>> set = map.entrySet();
         int i = 0;
@@ -553,21 +593,88 @@ public class OffHeapMap<K, V> implements Map<K, V>, Serializable {
                 System.err.println(e.getKey() + "=" + e.getValue());
             i++;
         }
-        System.err.println("Time to randomly read " + (max / 10) + " rows = "
+        System.err.println("Time to insert a  " + max + " rows "
                 + (System.currentTimeMillis() - ts));
-       
-        byte[] mapObj = Utils.serialize(map);
-        map = (Map<String,String>)Utils.deserialize(mapObj);
-        System.out.println("Just Deserialized");
-        set = map.entrySet();
-        i = 0;
-        for (Map.Entry<String, String> e : set) {
+    }
+    
+    private static void readKeySet(Map<String, String> map) {
+        long ts = System.currentTimeMillis();
+
+        Set<String> set = map.keySet();
+        int i = 0;
+        for (String e : set) {
+            //map.get(e);
             if (i % (max / 10) == 0)
-                System.err.println(e.getKey() + "=" + e.getValue());
+                System.err.println(map.get(e));
             i++;
         }
-        //map.clear();
-        //((OffHeapMap) map).delete();
+        System.err.println("Time to read KeySet a  " + max + " rows "
+                + (System.currentTimeMillis() - ts));
+    }
+
+    private static int max = 1000;
+
+    public static void maina(String[] args) {
+
+        Map<String, String> map = new OffHeapMap<String, String>("c:/tmp/",
+                "bigsynapse");
+
+        write(map);
+        read(map);
+        readEntrySet(map);
+
+        Utils.serialize(map,new File("c:/tmp/mymap.ser"));
+        //Utils.cleanupOffHeapMap(map);
+
+
+    }
+    public static void mainb(String[] args) {
+        /*
+        Map<String, String> map = new OffHeapMap<String, String>("c:/tmp/",
+                "bigsynapse");
+        write(map);
+        read(map);
+        readEntrySet(map);
+        readEntrySet(map);
+        readEntrySet(map);
+        
+        Utils.serialize(map,new File("c:/tmp/mymap.ser"));
+        map=null;
+        System.gc();
+        */
+        Map<String,String>map = (Map<String, String>) Utils.deserialize(new File("c:/tmp/mymap.ser"));
+        System.out.println("Deserialize=" + map.size());
+        // write(map);
+        read(map);
+        readKeySet(map);
+        map.put("X", "Y");
+        Utils.serialize(map,new File("c:/tmp/mymap2.ser"));
+        // map.clear();
+        // Utils.cleanup(map);
+    }
+    public static void main(String[] args) {
+        /*
+        Map<String, String> map = new OffHeapMap<String, String>("c:/tmp/",
+                "bigsynapse");
+        write(map);
+        read(map);
+        readEntrySet(map);
+        readEntrySet(map);
+        readEntrySet(map);
+        
+        Utils.serialize(map,new File("c:/tmp/mymap.ser"));
+        map=null;
+        System.gc();
+        */
+        Map<String,String>map = (Map<String, String>) Utils.deserialize(new File("c:/tmp/mymap.ser"));
+        System.out.println("Deserialize=" + map.size());
+        // write(map);
+        read(map);
+        readKeySet(map);
+        System.out.println(map.get("X"));
+        
+        // map.clear();
+        // Utils.cleanup(map);
     }
 
 }
