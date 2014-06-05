@@ -20,7 +20,6 @@ import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.FileInputStream;
-import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.ObjectInputStream;
@@ -28,7 +27,6 @@ import java.io.ObjectOutputStream;
 import java.util.Map;
 
 import org.apache.commons.io.FileUtils;
-import org.large.collections.OffHeapMap;
 
 public class Utils {
     public  static void serialize(Object obj,File f) {
@@ -108,10 +106,10 @@ public class Utils {
     }
     
     public static void cleanup(Map map){
-        if(!(map instanceof OffHeapMap)){
+        if(!(map instanceof org.largecollections.OffHeapMap)){
             throw new RuntimeException("Invalid Map Subtype. Should be of type OffHeapMap");
         }
-        ((OffHeapMap)map).delete();
+        ((org.largecollections.OffHeapMap)map).delete();
     }
     public  static void delete(File f) throws IOException {
         if (f.isDirectory()) {

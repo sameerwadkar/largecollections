@@ -4,11 +4,12 @@
   <artifactId>largecollections</artifactId>
   <version>0.0.1-SNAPSHOT</version>
     <dependencies>  
-    <dependency>
-	<groupId>org.apache.commons</groupId>
-	<artifactId>commons-math3</artifactId>
-	<version>3.0</version>
-	</dependency>
+<dependency>
+	<groupId>commons-lang</groupId>
+	<artifactId>commons-lang</artifactId>
+	<version>2.3</version>
+</dependency>
+
   	<dependency>
   		<groupId>com.higherfrequencytrading</groupId>
   		<artifactId>chronicle</artifactId>
@@ -24,6 +25,17 @@
   		<artifactId>junit</artifactId>
   		<version>3.8.2</version>
   	</dependency>
+  <dependency>
+    <groupId>org.fusesource.leveldbjni</groupId>
+    <artifactId>leveldbjni-all</artifactId>
+    <version>1.7</version>
+  </dependency>
+  <dependency>
+	<groupId>org.apache.commons</groupId>
+	<artifactId>commons-lang3</artifactId>
+	<version>3.0</version>
+</dependency>
+    	
 <dependency>
 	<groupId>fastutil</groupId>
 	<artifactId>fastutil</artifactId>
@@ -35,4 +47,27 @@
   			<version>14.0.1</version>
   		</dependency>
   </dependencies>
+  <build>
+        <plugins>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-assembly-plugin</artifactId>
+                <version>2.4</version>
+                <configuration>
+                    <descriptorRefs>
+                        <descriptorRef>jar-with-dependencies</descriptorRef>
+                    </descriptorRefs>
+                </configuration>
+                <executions>
+                    <execution>
+                        <id>assemble-all</id>
+                        <phase>package</phase>
+                        <goals>
+                            <goal>single</goal>
+                        </goals>
+                    </execution>
+                </executions>
+            </plugin>
+        </plugins>
+    </build>
 </project>
