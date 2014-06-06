@@ -26,6 +26,7 @@ public class OffHeapMapTest5 {
                 "bigsynapse");
 
         Assert.assertEquals(true,map.isEmpty());
+        
         map.put("1", "1");
         Iterator it = map.keySet().iterator();
         while(it.hasNext()){
