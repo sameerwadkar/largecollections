@@ -27,6 +27,7 @@ import java.io.ObjectOutputStream;
 import java.util.Map;
 
 import org.apache.commons.io.FileUtils;
+import org.largecollections.OffHeapMap;
 
 public class Utils {
     public  static void serialize(Object obj,File f) {
@@ -120,5 +121,9 @@ public class Utils {
               System.err.println("Deleted="+c.getAbsolutePath());
           }
         }
+      }
+    public  static void deleteOffHeapMap(Map m)  {
+        OffHeapMap ohm = (OffHeapMap)m;
+        ohm.delete();
       }
 }

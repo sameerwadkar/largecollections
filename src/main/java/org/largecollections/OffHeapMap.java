@@ -54,14 +54,16 @@ public class OffHeapMap<K, V> implements Map<K, V>, Serializable {
     private transient DB db;
     private int cacheSize = DEFAULT_CACHE_SIZE;
     private String dbComparatorCls = null;
-
+    private transient File dbFile = null;
+    private transient Options options = null;
     // private transient DBComparator comparator = null;
 
-    private static DB createDB(String folderName, String name, int cacheSize,
+    private  DB createDB(String folderName, String name, int cacheSize,
             String comparatorCls) {
+        //System.setProperty("java.io.timedir", folderName);
         DB db = null;
         try {
-            Options options = new Options();
+            this.options = new Options();
             options.cacheSize(cacheSize * 1048576); // 100MB cache
             ;
 
@@ -69,27 +71,14 @@ public class OffHeapMap<K, V> implements Map<K, V>, Serializable {
                 Class c = Class.forName(comparatorCls);
                 options.comparator((DBComparator) c.newInstance());
             }
-            db = factory.open(new File(folderName + File.separator + name),
-                    options);
-        } catch (Exception ex) {
-            Throwables.propagate(ex);
-        }
-        return db;
-
-    }
-
-    private static DB recreateDB(String folderName, String name, int cacheSize,
-            String comparatorCls) {
-        DB db = null;
-        try {
-            Options options = new Options();
-            options.cacheSize(cacheSize * 1048576); // 100MB cache
-            if (comparatorCls != null) {
-                Class c = Class.forName(comparatorCls);
-                options.comparator((DBComparator) c.newInstance());
+            ///this.dbFile = File.createTempFile(name, null);
+            this.dbFile = new File(this.folder+File.separator+this.name);
+            if(this.dbFile.exists()){
+                this.dbFile.delete();
             }
-            db = factory.open(new File(folderName + File.separator + name),
-                    options);
+            this.dbFile.mkdirs();
+            //new File(folderName + File.separator + name)
+            db = factory.open(this.dbFile,options);
         } catch (Exception ex) {
             Throwables.propagate(ex);
         }
@@ -97,8 +86,9 @@ public class OffHeapMap<K, V> implements Map<K, V>, Serializable {
 
     }
 
+    
     private DB createDB() {
-        return OffHeapMap.createDB(this.folder, this.name, this.cacheSize,
+        return createDB(this.folder, this.name, this.cacheSize,
                 this.dbComparatorCls);
     }
 
@@ -154,8 +144,7 @@ public class OffHeapMap<K, V> implements Map<K, V>, Serializable {
     }
 
     public boolean isEmpty() {
-        // TODO Auto-generated method stub
-        return (db.iterator().hasNext());
+        return !this.keySet().iterator().hasNext();
     }
 
     public boolean containsKey(Object key) {
@@ -175,7 +164,13 @@ public class OffHeapMap<K, V> implements Map<K, V>, Serializable {
             return null;
         }
         byte[] vbytes = db.get(Utils.serialize(key));
-        return (V) Utils.deserialize(vbytes);
+        if(vbytes==null){
+            return null;
+        }
+        else{
+            return (V) Utils.deserialize(vbytes);    
+        }
+        
     }
 
     public V put(K key, V value) {
@@ -218,44 +213,22 @@ public class OffHeapMap<K, V> implements Map<K, V>, Serializable {
     private boolean recreate = false;
 
     public void clear() {
-        boolean exit = false;
-        int counter = 0;
-        boolean closed = false;
-        boolean destroyed = false;
-        while (!exit) {
-            try {
-                if (counter == 0) {
-                    this.db.close();
-                    closed = true;
-
-                }
-                if (closed) {
-                    Thread.sleep(1000);
-                    // factory.destroy(new File(this.getPath()), new Options());
-                    Utils.delete(new File(this.getPath()));
-                    destroyed = true;
-                }
-                if (recreate && destroyed)
-                    this.createDB();
-                exit = true;
-            } catch (Exception ex) {
-                // /Throwables.propagate(ex);
-                ex.printStackTrace();
-                counter++;
-
-                if (counter == 5) {
-                    Throwables.propagate(ex);
-                }
-            } finally {
-                recreate = false;
-            }
+        Set<K> keys = this.keySet();
+        for(K k:keys){
+            this.remove(k);
         }
+        
 
     }
 
     public void delete() {
-        this.recreate = true;
-        this.clear();
+        try{
+            this.db.close();
+            factory.destroy(this.dbFile, this.options);
+        }
+        catch(Exception ex){
+            Throwables.propagate(ex);
+        }
     }
 
 
@@ -614,7 +587,7 @@ public class OffHeapMap<K, V> implements Map<K, V>, Serializable {
 
     private static int max = 1000;
 
-    public static void maina(String[] args) {
+    public static void main(String[] args) {
 
         Map<String, String> map = new OffHeapMap<String, String>("c:/tmp/",
                 "bigsynapse");
@@ -622,26 +595,20 @@ public class OffHeapMap<K, V> implements Map<K, V>, Serializable {
         write(map);
         read(map);
         readEntrySet(map);
-
         Utils.serialize(map,new File("c:/tmp/mymap.ser"));
+        //((OffHeapMap)map).delete();
+        map = (Map<String, String>) Utils.deserialize(new File("c:/tmp/mymap.ser"));
+        System.out.println("Deserialize=" + map.size());
+        // write(map);
+        read(map);
+        readKeySet(map);
+        System.out.println(map.get("X"));
+        //Utils.serialize(map,new File("c:/tmp/mymap.ser"));
         //Utils.cleanupOffHeapMap(map);
 
 
     }
     public static void mainb(String[] args) {
-        /*
-        Map<String, String> map = new OffHeapMap<String, String>("c:/tmp/",
-                "bigsynapse");
-        write(map);
-        read(map);
-        readEntrySet(map);
-        readEntrySet(map);
-        readEntrySet(map);
-        
-        Utils.serialize(map,new File("c:/tmp/mymap.ser"));
-        map=null;
-        System.gc();
-        */
         Map<String,String>map = (Map<String, String>) Utils.deserialize(new File("c:/tmp/mymap.ser"));
         System.out.println("Deserialize=" + map.size());
         // write(map);
@@ -652,20 +619,9 @@ public class OffHeapMap<K, V> implements Map<K, V>, Serializable {
         // map.clear();
         // Utils.cleanup(map);
     }
-    public static void main(String[] args) {
-        /*
-        Map<String, String> map = new OffHeapMap<String, String>("c:/tmp/",
-                "bigsynapse");
-        write(map);
-        read(map);
-        readEntrySet(map);
-        readEntrySet(map);
-        readEntrySet(map);
-        
-        Utils.serialize(map,new File("c:/tmp/mymap.ser"));
-        map=null;
-        System.gc();
-        */
+    
+    
+    public static void mainx(String[] args) {
         Map<String,String>map = (Map<String, String>) Utils.deserialize(new File("c:/tmp/mymap.ser"));
         System.out.println("Deserialize=" + map.size());
         // write(map);
