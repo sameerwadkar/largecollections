@@ -22,10 +22,10 @@ integer return value which has a maximum value of the range of 2 billion. Often 
 use LargeCacheMap. There is an additional function provided called lsize() which returns a long value. The size() still works
 but it will not be accurate once your size crosses the Integer.MAX_VALUE count.
 
-Usage-
+<b>Usage</b>-
 
 By default just use
-java.util.Map<MyKeyClass,MyValueClass> m = new OffHeapMap<MyKeyClass,MyValueClass>();
-//Use like a regular java.util.Map
-At the end clean up as follows
-((java.io.Closeable)m).close()
+java.util.Map<MyKeyClass,MyValueClass> m = new OffHeapMap<MyKeyClass,MyValueClass>();<br/>
+//Use like a regular java.util.Map<br/>
+At the end clean up as follows<br/>
+((java.io.Closeable)m).close()<br/>
