@@ -17,7 +17,7 @@ public class LargeCacheMapTest {
     @Test
     public void test01SerializeMap() throws Exception{
     
-        TestUtils.max=1000000;
+        TestUtils.max=1000;
         LargeCacheMap<String, String> map = new LargeCacheMap<String, String>("c:/tmp/",
                 "lcacheMap");
 
@@ -25,7 +25,7 @@ public class LargeCacheMapTest {
         TestUtils.read(map);
         TestUtils.readEntrySet(map);
         TestUtils.readKeySet(map);
-        
+        /*
         map.remove(Integer.toString(Integer.MAX_VALUE));
         System.err.println("LSize=" + map.lsize());
         System.err.println("Size=" + map.size());
@@ -37,7 +37,10 @@ public class LargeCacheMapTest {
         map.put("1","1");
         System.err.println("LSize=" + map.lsize());
         System.err.println("Size=" + map.size());
-        map.close();
+        //map.close();
+         * 
+         */
+        Utils.serialize(map,new File("c:/tmp/mymap.ser"));
     }
     
 

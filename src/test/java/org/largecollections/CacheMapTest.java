@@ -17,8 +17,8 @@ public class CacheMapTest {
     @Test
     public void test01SerializeMap() throws Exception{
     
-        TestUtils.max=1000000;
-        OffHeapMap<String, String> map = new OffHeapMap<String, String>("c:/tmp/",
+        TestUtils.max=1000;
+        CacheMap<String, String> map = new CacheMap<String, String>("c:/tmp/",
                 "cacheMap");
 
         write(map);
@@ -34,7 +34,8 @@ public class CacheMapTest {
         map.put("1","1");
         map.put("1","1");
         System.err.println("Size=" + map.size());
-        map.close();
+        //map.close();
+        Utils.serialize(map,new File("c:/tmp/mymap.ser"));
     }
     
 

@@ -15,39 +15,148 @@
  */
 package org.largecollections;
 
-import java.io.IOException;
-import java.util.Map;
+import static org.fusesource.leveldbjni.JniDBFactory.factory;
 
+import java.io.File;
+import java.io.IOException;
+import java.io.Serializable;
+import java.util.AbstractMap.SimpleEntry;
+import java.util.AbstractSet;
+import java.util.Collection;
+import java.util.Iterator;
+import java.util.Map;
+import java.util.Random;
+import java.util.Set;
+
+import org.apache.commons.lang.StringUtils;
+import org.iq80.leveldb.DB;
+import org.iq80.leveldb.DBComparator;
+import org.iq80.leveldb.DBIterator;
+import org.iq80.leveldb.Options;
 import org.iq80.leveldb.WriteBatch;
 
 import utils.Utils;
 
 import com.google.common.base.Throwables;
 
-public class LargeCacheMap<K, V> extends OffHeapMap<K,V>{
+public class LargeCacheMap<K, V>  implements Map<K,V>, Serializable{
     public  static final long serialVersionUID = 2l;
+
+    private final static Random rnd = new Random();
+    public static String DEFAULT_FOLDER = System.getProperty("java.io.tmpdir");
+    public static String DEFAULT_NAME = "TMP" + rnd.nextInt(1000000);
+    public static int DEFAULT_CACHE_SIZE = 25;
+
+    protected String folder = DEFAULT_FOLDER;
+    protected String name = DEFAULT_NAME;
+
+    protected transient DB db;
+    protected int cacheSize = DEFAULT_CACHE_SIZE;
+    protected String dbComparatorCls = null;
+    protected transient File dbFile = null;
+    protected transient Options options = null;
     private int size=0;
-    private long longSize=0;
+    private long longSize=0;    
+
+    protected  DB createDB(String folderName, String name, int cacheSize,
+            String comparatorCls) {
+        //System.setProperty("java.io.timedir", folderName);
+        try {
+            this.options = new Options();
+            options.cacheSize(cacheSize * 1048576); // 100MB cache
+            
+
+            if (comparatorCls != null) {
+                Class c = Class.forName(comparatorCls);
+                options.comparator((DBComparator) c.newInstance());
+            }
+            ///this.dbFile = File.createTempFile(name, null);
+            this.dbFile = new File(this.folder+File.separator+this.name);
+            if(!this.dbFile.exists()){
+                this.dbFile.mkdirs();
+            }
+            
+            //new File(folderName + File.separator + name)
+            db = factory.open(this.dbFile,options);
+        } catch (Exception ex) {
+            Throwables.propagate(ex);
+        }
+        return db;
+
+    }
+
+    
+    public DB createDB() {
+        return createDB(this.folder, this.name, this.cacheSize,
+                this.dbComparatorCls);
+    }
+
+    
     public LargeCacheMap(String folder, String name, int cacheSize,
             String comparatorCls) {
-       super(folder,name,cacheSize,comparatorCls);
+        try {
+            if (!StringUtils.isEmpty(name)) {
+                this.name = name;
+            }
+
+            if (!StringUtils.isEmpty(folder)) {
+                this.folder = folder;
+            }
+            if (cacheSize > 0)
+                this.cacheSize = cacheSize;
+            this.dbComparatorCls = comparatorCls;
+            this.db = this.createDB(this.folder, this.name, this.cacheSize,
+                    this.dbComparatorCls);
+
+        } catch (Exception ex) {
+            Throwables.propagate(ex);
+        }
+
     }
- 
+
     public LargeCacheMap(String folder, String name, int cacheSize) {
-        super(folder,name,cacheSize,null);
+        this(folder, name, cacheSize, null);
     }
 
     public LargeCacheMap(String folder, String name) {
-        super(folder,name,LargeCacheMap.DEFAULT_CACHE_SIZE, null);
+        this(folder, name, LargeCacheMap.DEFAULT_CACHE_SIZE, null);
     }
 
     public LargeCacheMap(String folder) {
-        super(folder,LargeCacheMap.DEFAULT_NAME,LargeCacheMap.DEFAULT_CACHE_SIZE, null);
+        this(folder, LargeCacheMap.DEFAULT_NAME, LargeCacheMap.DEFAULT_CACHE_SIZE,
+                null);
     }
 
     public LargeCacheMap() {
         this(LargeCacheMap.DEFAULT_FOLDER, LargeCacheMap.DEFAULT_NAME,
                 LargeCacheMap.DEFAULT_CACHE_SIZE, null);
+    }
+
+
+    public boolean containsKey(Object key) {
+        // TODO Auto-generated method stub
+        return db.get(Utils.serialize(key)) != null;
+    }
+
+    public boolean containsValue(Object value) {
+        // TODO Auto-generated method stub
+        throw new UnsupportedOperationException();
+
+    }
+
+    public V get(Object key) {
+        // TODO Auto-generated method stub
+        if (key == null) {
+            return null;
+        }
+        byte[] vbytes = db.get(Utils.serialize(key));
+        if(vbytes==null){
+            return null;
+        }
+        else{
+            return (V) Utils.deserialize(vbytes);    
+        }
+        
     }
 
     public int size() {
@@ -118,6 +227,8 @@ public class LargeCacheMap<K, V> extends OffHeapMap<K,V>{
         stream.writeObject(this.dbComparatorCls);
         stream.writeInt(this.size);
         stream.writeLong(this.longSize);
+        this.db.close();
+        
     }
 
     private void readObject(java.io.ObjectInputStream in) throws IOException,
@@ -128,9 +239,406 @@ public class LargeCacheMap<K, V> extends OffHeapMap<K,V>{
         this.dbComparatorCls = (String) in.readObject();
         this.size = in.readInt();
         this.longSize = in.readLong();
-        this.db = this.createDB(this.folder, this.name, this.cacheSize,
-                this.dbComparatorCls);
+        this.createDB();
+        
+    }
+
+    private String getPath() {
+        return this.folder + File.separator + this.name;
+    }
+
+    private boolean recreate = false;
+
+    public void clear() {
+        Set<K> keys = this.keySet();
+        for(K k:keys){
+            this.remove(k);
+        }
+        
+
+    }
+
+   
+
+
+
+    public Set<K> keySet() {
+        return new OffHeapSet<K>(this);
+    }
+    public Collection<V> values() {
+        return new OffHeapCollection(this);
+    }
+
+    public Set<java.util.Map.Entry<K, V>> entrySet() {
+        // Return an Iterator backed by the DB
+        return new OffHeapEntrySet(this);
+    }
+
+    private DB getDb() {
+        return db;
     }
 
 
+
+    /**
+     * @param args
+     */
+
+    private final class OffHeapCollection<V> implements Collection<V> {
+        private LargeCacheMap map = null;
+
+        public OffHeapCollection(LargeCacheMap map) {
+            this.map = map;
+        }
+
+        public int size() {
+            // TODO Auto-generated method stub
+            return this.map.size();
+        }
+
+        public boolean isEmpty() {
+            // TODO Auto-generated method stub
+            return this.map.isEmpty();
+        }
+
+        public boolean contains(Object o) {
+            // TODO Auto-generated method stub
+            return this.map.containsKey(o);
+        }
+
+        public Iterator<V> iterator() {
+            throw new UnsupportedOperationException();
+        }
+
+        public Object[] toArray() {
+            throw new UnsupportedOperationException();
+        }
+
+        public <T> T[] toArray(T[] a) {
+            throw new UnsupportedOperationException();
+        }
+
+        public boolean add(V e) {
+            throw new UnsupportedOperationException();
+        }
+
+        public boolean remove(Object o) {
+            // TODO Auto-generated method stub
+            return (this.map.remove(o) != null);
+        }
+
+        public boolean containsAll(Collection<?> c) {
+            // TODO Auto-generated method stub
+            throw new UnsupportedOperationException();
+        }
+
+        public boolean addAll(Collection<? extends V> c) {
+            // TODO Auto-generated method stub
+            throw new UnsupportedOperationException();
+        }
+
+        public boolean removeAll(Collection<?> c) {
+            // TODO Auto-generated method stub
+            throw new UnsupportedOperationException();
+        }
+
+        public boolean retainAll(Collection<?> c) {
+            // TODO Auto-generated method stub
+            throw new UnsupportedOperationException();
+        }
+
+        public void clear() {
+            // TODO Auto-generated method stub
+            this.map.clear();
+        }
+
+    }
+
+    private final class OffHeapSet<K> implements Set<K> {
+        private LargeCacheMap map = null;
+
+        public OffHeapSet(LargeCacheMap map) {
+            this.map = map;
+        }
+
+        public int size() {
+            // TODO Auto-generated method stub
+            return map.size();
+        }
+
+        public boolean isEmpty() {
+            // TODO Auto-generated method stub
+            return map.isEmpty();
+        }
+
+        public boolean contains(Object o) {
+            // TODO Auto-generated method stub
+            return map.containsKey(o);
+        }
+
+        public Iterator<K> iterator() {
+            // TODO Auto-generated method stub
+            return new KeyIterator<K>(this.map);
+        }
+
+        public Object[] toArray() {
+            // TODO Auto-generated method stub
+            throw new UnsupportedOperationException();
+        }
+
+        public <T> T[] toArray(T[] a) {
+            // TODO Auto-generated method stub
+            throw new UnsupportedOperationException();
+        }
+
+        public boolean add(K e) {
+            // TODO Auto-generated method stub
+            throw new UnsupportedOperationException();
+        }
+
+        public boolean remove(Object o) {
+            // TODO Auto-generated method stub
+            this.map.remove(o);
+            return true;
+        }
+
+        public boolean containsAll(Collection<?> c) {
+            // TODO Auto-generated method stub
+            if (c != null) {
+                for (Object o : c) {
+                    if (this.map.get(o) == null) {
+                        return false;
+                    }
+                }
+            }
+            return true;
+        }
+
+        public boolean addAll(Collection<? extends K> c) {
+            // TODO Auto-generated method stub
+            throw new UnsupportedOperationException();
+        }
+
+        public boolean retainAll(Collection<?> c) {
+            // TODO Auto-generated method stub
+            throw new UnsupportedOperationException();
+        }
+
+        public boolean removeAll(Collection<?> c) {
+            // TODO Auto-generated method stub
+            for (Object o : c) {
+                this.map.remove(o);
+            }
+            return true;
+        }
+
+        public void clear() {
+            // TODO Auto-generated method stub
+            this.map.clear();
+        }
+
+    }
+
+    private final class KeyIterator<K> implements Iterator<K> {
+
+        private DBIterator iter = null;
+
+        public KeyIterator(LargeCacheMap map) {
+            this.iter = map.getDb().iterator();
+            this.iter.seekToFirst();
+        }
+
+        public boolean hasNext() {
+            // TODO Auto-generated method stub
+            return this.iter.hasNext();
+        }
+
+        public K next() {
+            // TODO Auto-generated method stub
+            Entry<byte[], byte[]> entry = this.iter.next();
+            return (K) Utils.deserialize(entry.getKey());
+        }
+
+        public void remove() {
+            // TODO Auto-generated method stub
+            this.iter.remove();
+        }
+
+    }
+
+    private final class OffHeapEntrySet<K, V> extends
+            AbstractSet<Map.Entry<K, V>> {
+        private EntryIterator iterator = null;
+        private Map LargeCacheMap = null;
+
+        public OffHeapEntrySet(LargeCacheMap map) {
+            this.iterator = new EntryIterator(map);
+            this.LargeCacheMap = map;
+        }
+
+        @Override
+        public Iterator<java.util.Map.Entry<K, V>> iterator() {
+            // TODO Auto-generated method stub
+            return this.iterator;
+        }
+
+        @Override
+        public int size() {
+            // TODO Auto-generated method stub
+            return this.LargeCacheMap.size();
+        }
+
+    }
+
+    private final class EntryIterator<K, V> implements
+            Iterator<java.util.Map.Entry<K, V>> {
+
+        private DBIterator iter = null;
+
+        public EntryIterator(LargeCacheMap map) {
+
+            try {
+                this.iter = map.getDb().iterator();
+                //this.iter.close();
+                if(this.iter.hasPrev())
+                    this.iter.seekToLast();
+                this.iter.seekToFirst();
+            } catch (Exception ex) {
+                Throwables.propagate(ex);
+            }
+
+        }
+
+        public boolean hasNext() {
+            // TODO Auto-generated method stub
+            boolean hasNext = iter.hasNext();
+            return hasNext;
+        }
+
+        public java.util.Map.Entry<K, V> next() {
+            // TODO Auto-generated method stub
+            Entry<byte[], byte[]> entry = this.iter.next();
+            return new SimpleEntry((K) Utils.deserialize(entry.getKey()),
+                    (V) Utils.deserialize(entry.getValue()));
+        }
+
+        public void remove() {
+            this.iter.remove();
+        }
+
+    }
+
+    private static void read(Map<String, String> map) {
+        Random rnd = new Random();
+        Long ts = System.currentTimeMillis();
+        for (int i = 0; i < max; i++) {
+            String k = Integer.toString(rnd.nextInt(max));
+            String v = map.get(k);
+            if (i % (max / 10) == 0) {
+                System.out.println(k + "=" + v);
+            }
+        }
+        System.err.println("Time to read a  " + max + " rows "
+                + (System.currentTimeMillis() - ts));
+    }
+
+    private static void write(Map<String, String> map) {
+        long ts = System.currentTimeMillis();
+
+        for (int i = 0; i < max; i++) {
+            map.put(Integer.toString(i), Integer.toString(i));
+        }
+
+        System.err.println("Time to insert a  " + max + " rows "
+                + (System.currentTimeMillis() - ts));
+    }
+
+    private static void readEntrySet(Map<String, String> map) {
+        long ts = System.currentTimeMillis();
+
+        Set<Map.Entry<String, String>> set = map.entrySet();
+        int i = 0;
+        for (Map.Entry<String, String> e : set) {
+            if (i % (max / 10) == 0)
+                System.err.println(e.getKey() + "=" + e.getValue());
+            i++;
+        }
+        System.err.println("Time to insert a  " + max + " rows "
+                + (System.currentTimeMillis() - ts));
+    }
+    
+    private static void readKeySet(Map<String, String> map) {
+        long ts = System.currentTimeMillis();
+
+        Set<String> set = map.keySet();
+        int i = 0;
+        for (String e : set) {
+            //map.get(e);
+            if (i % (max / 10) == 0)
+                System.err.println(map.get(e));
+            i++;
+        }
+        System.err.println("Time to read KeySet a  " + max + " rows "
+                + (System.currentTimeMillis() - ts));
+    }
+
+    private static int max = 1000;
+
+    public static void main(String[] args) {
+
+        Map<String, String> map = new LargeCacheMap<String, String>("c:/tmp/",
+                "bigsynapse");
+
+        write(map);
+        read(map);
+        readEntrySet(map);
+        Utils.serialize(map,new File("c:/tmp/mymap.ser"));
+        //((LargeCacheMap)map).delete();
+        map = (Map<String, String>) Utils.deserialize(new File("c:/tmp/mymap.ser"));
+        System.out.println("Deserialize=" + map.size());
+        // write(map);
+        read(map);
+        readKeySet(map);
+        System.out.println(map.get("X"));
+        //Utils.serialize(map,new File("c:/tmp/mymap.ser"));
+        //Utils.cleanupLargeCacheMap(map);
+
+
+    }
+    public static void mainb(String[] args) {
+        Map<String,String>map = (Map<String, String>) Utils.deserialize(new File("c:/tmp/mymap.ser"));
+        System.out.println("Deserialize=" + map.size());
+        // write(map);
+        read(map);
+        readKeySet(map);
+        map.put("X", "Y");
+        Utils.serialize(map,new File("c:/tmp/mymap2.ser"));
+        // map.clear();
+        // Utils.cleanup(map);
+    }
+    
+    
+    public static void mainx(String[] args) {
+        Map<String,String>map = (Map<String, String>) Utils.deserialize(new File("c:/tmp/mymap.ser"));
+        System.out.println("Deserialize=" + map.size());
+        // write(map);
+        read(map);
+        readKeySet(map);
+        System.out.println(map.get("X"));
+        
+        // map.clear();
+        // Utils.cleanup(map);
+    }
+
+
+    public void close() throws IOException {
+        try{
+            this.db.close();
+            factory.destroy(this.dbFile, this.options);
+        }
+        catch(Exception ex){
+            Throwables.propagate(ex);
+        }
+        
+    }
 }

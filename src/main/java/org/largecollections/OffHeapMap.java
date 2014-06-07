@@ -74,10 +74,10 @@ public class OffHeapMap<K, V> implements Map<K, V>, Serializable,  Closeable{
             }
             ///this.dbFile = File.createTempFile(name, null);
             this.dbFile = new File(this.folder+File.separator+this.name);
-            if(this.dbFile.exists()){
-                this.dbFile.delete();
+            if(!this.dbFile.exists()){
+                this.dbFile.mkdirs();
             }
-            this.dbFile.mkdirs();
+            
             //new File(folderName + File.separator + name)
             db = factory.open(this.dbFile,options);
         } catch (Exception ex) {
@@ -88,11 +88,12 @@ public class OffHeapMap<K, V> implements Map<K, V>, Serializable,  Closeable{
     }
 
     
-    private DB createDB() {
+    public DB createDB() {
         return createDB(this.folder, this.name, this.cacheSize,
                 this.dbComparatorCls);
     }
 
+    
     public OffHeapMap(String folder, String name, int cacheSize,
             String comparatorCls) {
         try {
