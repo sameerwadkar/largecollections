@@ -7,7 +7,7 @@ simply use the API they are familiar with.
 
 It sticks to the spirit of Convention over Customization. By default it uses the folder defined by the System Property 
 java.io.tmpdir to store the files it needs to support the datastore which backs the map. However the user can customize the
-folder and the name of the datastore using various constructor. It support serialization and deserialization. 
+folder and the name of the datastore using various constructors. It support serialization and deserialization as well. 
 
 Currently supports 3 main classes-
 1. OffHeapMap - This is a fastest implementation. It does not attempt to maintain information of the size of the Map. The
