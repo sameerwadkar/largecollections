@@ -21,7 +21,7 @@ public class OffHeapMapTest5 {
 
     
     @Test
-    public void testIsEmpty(){
+    public void testIsEmpty() throws Exception{
         OffHeapMap<String, String> map = new OffHeapMap<String, String>("c:/tmp/",
                 "bigsynapse");
 
@@ -39,7 +39,7 @@ public class OffHeapMapTest5 {
         Assert.assertEquals(false,map.isEmpty());
         map.remove("1");
         Assert.assertEquals(true,map.isEmpty());
-        Utils.deleteOffHeapMap(map);
+        map.close();
     }
 
   

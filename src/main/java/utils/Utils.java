@@ -29,6 +29,8 @@ import java.util.Map;
 import org.apache.commons.io.FileUtils;
 import org.largecollections.OffHeapMap;
 
+import com.google.common.base.Throwables;
+
 public class Utils {
     public  static void serialize(Object obj,File f) {
         try{
@@ -106,12 +108,7 @@ public class Utils {
                   // (I'm not sure how this works on a 64-bit OS)
     }
     
-    public static void cleanup(Map map){
-        if(!(map instanceof org.largecollections.OffHeapMap)){
-            throw new RuntimeException("Invalid Map Subtype. Should be of type OffHeapMap");
-        }
-        ((org.largecollections.OffHeapMap)map).delete();
-    }
+
     public  static void delete(File f) throws IOException {
         if (f.isDirectory()) {
             System.err.println("DD");
@@ -123,7 +120,13 @@ public class Utils {
         }
       }
     public  static void deleteOffHeapMap(Map m)  {
-        OffHeapMap ohm = (OffHeapMap)m;
-        ohm.delete();
+        try{
+            OffHeapMap ohm = (OffHeapMap)m;
+            ohm.close();     
+        }
+        catch(Exception ex){
+            Throwables.propagate(ex);
+        }
+
       }
 }

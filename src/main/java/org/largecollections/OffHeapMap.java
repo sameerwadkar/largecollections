@@ -18,6 +18,7 @@ package org.largecollections;
 import static org.fusesource.leveldbjni.JniDBFactory.bytes;
 import static org.fusesource.leveldbjni.JniDBFactory.factory;
 
+import java.io.Closeable;
 import java.io.File;
 import java.io.IOException;
 import java.io.Serializable;
@@ -41,24 +42,24 @@ import utils.Utils;
 
 import com.google.common.base.Throwables;
 
-public class OffHeapMap<K, V> implements Map<K, V>, Serializable {
+public class OffHeapMap<K, V> implements Map<K, V>, Serializable,  Closeable{
     public  static final long serialVersionUID = 1l;
     private final static Random rnd = new Random();
     public static String DEFAULT_FOLDER = System.getProperty("java.io.tmpdir");
     public static String DEFAULT_NAME = "TMP" + rnd.nextInt(1000000);
     public static int DEFAULT_CACHE_SIZE = 25;
 
-    private String folder = DEFAULT_FOLDER;
-    private String name = DEFAULT_NAME;
+    protected String folder = DEFAULT_FOLDER;
+    protected String name = DEFAULT_NAME;
 
-    private transient DB db;
-    private int cacheSize = DEFAULT_CACHE_SIZE;
-    private String dbComparatorCls = null;
-    private transient File dbFile = null;
-    private transient Options options = null;
+    protected transient DB db;
+    protected int cacheSize = DEFAULT_CACHE_SIZE;
+    protected String dbComparatorCls = null;
+    protected transient File dbFile = null;
+    protected transient Options options = null;
     // private transient DBComparator comparator = null;
 
-    private  DB createDB(String folderName, String name, int cacheSize,
+    protected  DB createDB(String folderName, String name, int cacheSize,
             String comparatorCls) {
         //System.setProperty("java.io.timedir", folderName);
         DB db = null;
@@ -145,6 +146,7 @@ public class OffHeapMap<K, V> implements Map<K, V>, Serializable {
 
     public boolean isEmpty() {
         return !this.keySet().iterator().hasNext();
+        //return !this.db.iterator().hasNext();
     }
 
     public boolean containsKey(Object key) {
@@ -221,16 +223,7 @@ public class OffHeapMap<K, V> implements Map<K, V>, Serializable {
 
     }
 
-    public void delete() {
-        try{
-            this.db.close();
-            factory.destroy(this.dbFile, this.options);
-        }
-        catch(Exception ex){
-            Throwables.propagate(ex);
-        }
-    }
-
+   
 
 
 
@@ -252,25 +245,10 @@ public class OffHeapMap<K, V> implements Map<K, V>, Serializable {
 
     private void writeObject(java.io.ObjectOutputStream stream)
             throws IOException {
-
-        //this.db.resumeCompactions();
-        
-
-        try {
-            Thread.sleep(2000);
-        } catch (Exception ex) {
-            ex.printStackTrace();
-        }
-
         stream.writeObject(this.folder);
         stream.writeObject(this.name);
         stream.writeInt(this.cacheSize);
         stream.writeObject(this.dbComparatorCls);
-        //ReadOptions options = new ReadOptions();
-        //this.db.iterator(arg0)
-        //this.db.iterator().close();
-        //this.db.close();
-        //this.db=null;
     }
 
     private void readObject(java.io.ObjectInputStream in) throws IOException,
@@ -631,6 +609,18 @@ public class OffHeapMap<K, V> implements Map<K, V>, Serializable {
         
         // map.clear();
         // Utils.cleanup(map);
+    }
+
+
+    public void close() throws IOException {
+        try{
+            this.db.close();
+            factory.destroy(this.dbFile, this.options);
+        }
+        catch(Exception ex){
+            Throwables.propagate(ex);
+        }
+        
     }
 
 }

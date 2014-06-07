@@ -11,24 +11,29 @@ import org.junit.Test;
 
 import utils.Utils;
 
-public class OffHeapMapTest6 {
-    public static int max = 1000000;
+public class CacheMapTest {
+    
     
     @Test
     public void test01SerializeMap() throws Exception{
     
-
+        TestUtils.max=1000000;
         OffHeapMap<String, String> map = new OffHeapMap<String, String>("c:/tmp/",
-                "bigsynapse");
+                "cacheMap");
 
         write(map);
         TestUtils.read(map);
         TestUtils.readEntrySet(map);
         TestUtils.readKeySet(map);
-        Utils.deleteOffHeapMap(map);
-        map = new OffHeapMap<String, String>("c:/tmp/",
-                "bigsynapse");
-        write(map);
+        
+        map.remove(Integer.toString(Integer.MAX_VALUE));
+        System.err.println("Size=" + map.size());
+        map.remove("1");
+        System.err.println("Size=" + map.size());
+        map.put("1","1");
+        map.put("1","1");
+        map.put("1","1");
+        System.err.println("Size=" + map.size());
         map.close();
     }
     
