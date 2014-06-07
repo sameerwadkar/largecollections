@@ -17,6 +17,7 @@ package org.largecollections;
 
 import static org.fusesource.leveldbjni.JniDBFactory.factory;
 
+import java.io.Closeable;
 import java.io.File;
 import java.io.IOException;
 import java.io.Serializable;
@@ -38,8 +39,15 @@ import org.iq80.leveldb.WriteBatch;
 import utils.Utils;
 
 import com.google.common.base.Throwables;
-
-public class LargeCacheMap<K, V>  implements Map<K,V>, Serializable{
+/**
+ * LargeCacheMap is a true implementation of Map. Unlike OffHeapMap which operates about 30% faster on put() and remove() CacheMap returns the
+ * correct value for size() function. OffHeapMap provides a heuristic value for size which is compensated by its faster performance.
+ * 
+ * It differs from CacheMap in that it provides a lsize() function which is longer version of size(). In this respect it deviates from a
+ * typical Map implementation. In return it allows LargeCacheMap to have size higher than Integer.MAX_VALUE
+ * 
+ */
+public class LargeCacheMap<K, V>  implements Map<K,V>, Serializable, Closeable{
     public  static final long serialVersionUID = 2l;
 
     private final static Random rnd = new Random();

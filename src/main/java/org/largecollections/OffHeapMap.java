@@ -41,7 +41,12 @@ import org.iq80.leveldb.WriteBatch;
 import utils.Utils;
 
 import com.google.common.base.Throwables;
-
+/**
+ * OffHeapMap is an implementation of java.util.Map. OffHeapMap provides a heuristic value for size which is compensated by its 
+ * faster performance. If you want a true implementation of Map which returns the most accurate value for size() use CacheMap or 
+ * LargeCacheMap
+ * 
+ */
 public class OffHeapMap<K, V> implements Map<K, V>, Serializable,  Closeable{
     public  static final long serialVersionUID = 1l;
     private final static Random rnd = new Random();
