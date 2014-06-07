@@ -1,4 +1,4 @@
-largecollections
+Large Collections
 ================
 
 HashMap implementation that uses Off-Heap Memory to Scale to millions of elements without running in to GC errors. 
