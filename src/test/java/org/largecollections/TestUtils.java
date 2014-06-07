@@ -5,7 +5,7 @@ import java.util.Random;
 import java.util.Set;
 
 public class TestUtils {
-    public static int max = 1000000;
+    public static int max = 1000;
     public static void read(Map<String, String> map) {
         Random rnd = new Random();
         Long ts = System.currentTimeMillis();
