@@ -46,6 +46,9 @@ import com.google.common.base.Throwables;
  * faster performance. If you want a true implementation of Map which returns the most accurate value for size() use CacheMap or 
  * LargeCacheMap
  * 
+ * It differs from CacheMap in that it provides a lsize() function which is longer version of size(). In this respect it deviates from a
+ * typical Map implementation. In return it allows LargeCacheMap to have size higher than Integer.MAX_VALUE
+ * 
  */
 public class OffHeapMap<K, V> implements Map<K, V>, Serializable,  Closeable{
     public  static final long serialVersionUID = 1l;
