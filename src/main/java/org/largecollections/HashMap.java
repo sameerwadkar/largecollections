@@ -39,24 +39,24 @@ import org.iq80.leveldb.WriteBatch;
 import utils.Utils;
 
 import com.google.common.base.Throwables;
-
 /**
- * CacheMap is a true implementation of Map. Unlike OffHeapMap which operates about 30% faster on put() and remove() CacheMap returns the
+ * LargeCacheMap is a true implementation of Map. Unlike OffHeapMap which operates about 30% faster on put() and remove() CacheMap returns the
  * correct value for size() function. OffHeapMap provides a heuristic value for size which is compensated by its faster performance.
  * 
- * 
+ * It differs from CacheMap in that it provides a lsize() function which is longer version of size(). In this respect it deviates from a
+ * typical Map implementation. In return it allows LargeCacheMap to have size higher than Integer.MAX_VALUE
  * 
  */
-public class CacheMap<K, V>  implements Map<K,V>, Serializable, Closeable{
+public class HashMap<K, V>  implements Map<K,V>, Serializable, Closeable{
     public  static final long serialVersionUID = 2l;
 
     private final static Random rnd = new Random();
     public static String DEFAULT_FOLDER = System.getProperty("java.io.tmpdir");
-    //public static String DEFAULT_NAME = "TMP" + rnd.nextInt(1000000);
+    public static String DEFAULT_NAME = "TMP" + rnd.nextInt(1000000);
     public static int DEFAULT_CACHE_SIZE = 25;
 
     protected String folder = DEFAULT_FOLDER;
-    protected String name = null;
+    protected String name = DEFAULT_NAME;
 
     protected transient DB db;
     protected int cacheSize = DEFAULT_CACHE_SIZE;
@@ -64,13 +64,12 @@ public class CacheMap<K, V>  implements Map<K,V>, Serializable, Closeable{
     protected transient File dbFile = null;
     protected transient Options options = null;
     private int size=0;
-    
+    private long longSize=0;    
 
     protected  DB createDB(String folderName, String name, int cacheSize,
             String comparatorCls) {
         //System.setProperty("java.io.timedir", folderName);
         try {
-            //Thread.currentThread().sleep(3000);
             this.options = new Options();
             options.cacheSize(cacheSize * 1048576); // 100MB cache
             
@@ -87,7 +86,6 @@ public class CacheMap<K, V>  implements Map<K,V>, Serializable, Closeable{
             
             //new File(folderName + File.separator + name)
             db = factory.open(this.dbFile,options);
-
         } catch (Exception ex) {
             Throwables.propagate(ex);
         }
@@ -102,7 +100,7 @@ public class CacheMap<K, V>  implements Map<K,V>, Serializable, Closeable{
     }
 
     
-    public CacheMap(String folder, String name, int cacheSize,
+    public HashMap(String folder, String name, int cacheSize,
             String comparatorCls) {
         try {
             if (!StringUtils.isEmpty(name)) {
@@ -124,22 +122,22 @@ public class CacheMap<K, V>  implements Map<K,V>, Serializable, Closeable{
 
     }
 
-    public CacheMap(String folder, String name, int cacheSize) {
+    public HashMap(String folder, String name, int cacheSize) {
         this(folder, name, cacheSize, null);
     }
 
-    public CacheMap(String folder, String name) {
-        this(folder, name, CacheMap.DEFAULT_CACHE_SIZE, null);
+    public HashMap(String folder, String name) {
+        this(folder, name, HashMap.DEFAULT_CACHE_SIZE, null);
     }
 
-    public CacheMap(String folder) {       
-        this(folder,"TMP" + rnd.nextInt(1000000), CacheMap.DEFAULT_CACHE_SIZE,
+    public HashMap(String folder) {
+        this(folder, HashMap.DEFAULT_NAME, HashMap.DEFAULT_CACHE_SIZE,
                 null);
     }
 
-    public CacheMap() {
-        this(CacheMap.DEFAULT_FOLDER, "TMP" + rnd.nextInt(1000000),
-                CacheMap.DEFAULT_CACHE_SIZE, null);
+    public HashMap() {
+        this(HashMap.DEFAULT_FOLDER, HashMap.DEFAULT_NAME,
+                HashMap.DEFAULT_CACHE_SIZE, null);
     }
 
 
@@ -173,9 +171,12 @@ public class CacheMap<K, V>  implements Map<K,V>, Serializable, Closeable{
         return size;
     }
 
-
+    public long lsize(){
+        return this.longSize;
+    }
+    
     public boolean isEmpty() {
-        return size==0;
+        return longSize==0;
     }
 
     public V put(K key, V value) {
@@ -183,7 +184,7 @@ public class CacheMap<K, V>  implements Map<K,V>, Serializable, Closeable{
         if(v==null){
             db.put(Utils.serialize(key), Utils.serialize(value));
             size++;
-            
+            longSize++;
         }
         else{
             db.put(Utils.serialize(key), Utils.serialize(value));
@@ -196,7 +197,7 @@ public class CacheMap<K, V>  implements Map<K,V>, Serializable, Closeable{
         if(v!=null){
             db.delete(Utils.serialize(key));
             size--;
-            
+            longSize--;
         }
         return v;// Just a null to improve performance
     }
@@ -209,7 +210,7 @@ public class CacheMap<K, V>  implements Map<K,V>, Serializable, Closeable{
                 V v = this.get(e.getKey());
                 if(v==null){
                     this.size++;
-                   
+                    this.longSize++;
                 }
                 batch.put((Utils.serialize(e.getKey())),
                         Utils.serialize(e.getValue()));
@@ -233,7 +234,7 @@ public class CacheMap<K, V>  implements Map<K,V>, Serializable, Closeable{
         stream.writeInt(this.cacheSize);
         stream.writeObject(this.dbComparatorCls);
         stream.writeInt(this.size);
-      
+        stream.writeLong(this.longSize);
         this.db.close();
         
     }
@@ -245,7 +246,7 @@ public class CacheMap<K, V>  implements Map<K,V>, Serializable, Closeable{
         this.cacheSize = in.readInt();
         this.dbComparatorCls = (String) in.readObject();
         this.size = in.readInt();
-       
+        this.longSize = in.readLong();
         this.createDB();
         
     }
@@ -292,9 +293,9 @@ public class CacheMap<K, V>  implements Map<K,V>, Serializable, Closeable{
      */
 
     private final class OffHeapCollection<V> implements Collection<V> {
-        private CacheMap map = null;
+        private HashMap map = null;
 
-        public OffHeapCollection(CacheMap map) {
+        public OffHeapCollection(HashMap map) {
             this.map = map;
         }
 
@@ -362,9 +363,9 @@ public class CacheMap<K, V>  implements Map<K,V>, Serializable, Closeable{
     }
 
     private final class OffHeapSet<K> implements Set<K> {
-        private CacheMap map = null;
+        private HashMap map = null;
 
-        public OffHeapSet(CacheMap map) {
+        public OffHeapSet(HashMap map) {
             this.map = map;
         }
 
@@ -450,7 +451,7 @@ public class CacheMap<K, V>  implements Map<K,V>, Serializable, Closeable{
 
         private DBIterator iter = null;
 
-        public KeyIterator(CacheMap map) {
+        public KeyIterator(HashMap map) {
             this.iter = map.getDb().iterator();
             this.iter.seekToFirst();
         }
@@ -476,11 +477,11 @@ public class CacheMap<K, V>  implements Map<K,V>, Serializable, Closeable{
     private final class OffHeapEntrySet<K, V> extends
             AbstractSet<Map.Entry<K, V>> {
         private EntryIterator iterator = null;
-        private Map CacheMap = null;
+        private Map LargeCacheMap = null;
 
-        public OffHeapEntrySet(CacheMap map) {
+        public OffHeapEntrySet(HashMap map) {
             this.iterator = new EntryIterator(map);
-            this.CacheMap = map;
+            this.LargeCacheMap = map;
         }
 
         @Override
@@ -492,7 +493,7 @@ public class CacheMap<K, V>  implements Map<K,V>, Serializable, Closeable{
         @Override
         public int size() {
             // TODO Auto-generated method stub
-            return this.CacheMap.size();
+            return this.LargeCacheMap.size();
         }
 
     }
@@ -502,7 +503,7 @@ public class CacheMap<K, V>  implements Map<K,V>, Serializable, Closeable{
 
         private DBIterator iter = null;
 
-        public EntryIterator(CacheMap map) {
+        public EntryIterator(HashMap map) {
 
             try {
                 this.iter = map.getDb().iterator();
@@ -535,7 +536,108 @@ public class CacheMap<K, V>  implements Map<K,V>, Serializable, Closeable{
 
     }
 
-   
+    private static void read(Map<String, String> map) {
+        Random rnd = new Random();
+        Long ts = System.currentTimeMillis();
+        for (int i = 0; i < max; i++) {
+            String k = Integer.toString(rnd.nextInt(max));
+            String v = map.get(k);
+            if (i % (max / 10) == 0) {
+                System.out.println(k + "=" + v);
+            }
+        }
+        System.err.println("Time to read a  " + max + " rows "
+                + (System.currentTimeMillis() - ts));
+    }
+
+    private static void write(Map<String, String> map) {
+        long ts = System.currentTimeMillis();
+
+        for (int i = 0; i < max; i++) {
+            map.put(Integer.toString(i), Integer.toString(i));
+        }
+
+        System.err.println("Time to insert a  " + max + " rows "
+                + (System.currentTimeMillis() - ts));
+    }
+
+    private static void readEntrySet(Map<String, String> map) {
+        long ts = System.currentTimeMillis();
+
+        Set<Map.Entry<String, String>> set = map.entrySet();
+        int i = 0;
+        for (Map.Entry<String, String> e : set) {
+            if (i % (max / 10) == 0)
+                System.err.println(e.getKey() + "=" + e.getValue());
+            i++;
+        }
+        System.err.println("Time to insert a  " + max + " rows "
+                + (System.currentTimeMillis() - ts));
+    }
+    
+    private static void readKeySet(Map<String, String> map) {
+        long ts = System.currentTimeMillis();
+
+        Set<String> set = map.keySet();
+        int i = 0;
+        for (String e : set) {
+            //map.get(e);
+            if (i % (max / 10) == 0)
+                System.err.println(map.get(e));
+            i++;
+        }
+        System.err.println("Time to read KeySet a  " + max + " rows "
+                + (System.currentTimeMillis() - ts));
+    }
+
+    private static int max = 1000;
+
+    public static void main(String[] args) {
+
+        Map<String, String> map = new HashMap<String, String>("c:/tmp/",
+                "bigsynapse");
+
+        write(map);
+        read(map);
+        readEntrySet(map);
+        Utils.serialize(map,new File("c:/tmp/mymap.ser"));
+        //((LargeCacheMap)map).delete();
+        map = (Map<String, String>) Utils.deserialize(new File("c:/tmp/mymap.ser"));
+        System.out.println("Deserialize=" + map.size());
+        // write(map);
+        read(map);
+        readKeySet(map);
+        System.out.println(map.get("X"));
+        //Utils.serialize(map,new File("c:/tmp/mymap.ser"));
+        //Utils.cleanupLargeCacheMap(map);
+
+
+    }
+    public static void mainb(String[] args) {
+        Map<String,String>map = (Map<String, String>) Utils.deserialize(new File("c:/tmp/mymap.ser"));
+        System.out.println("Deserialize=" + map.size());
+        // write(map);
+        read(map);
+        readKeySet(map);
+        map.put("X", "Y");
+        Utils.serialize(map,new File("c:/tmp/mymap2.ser"));
+        // map.clear();
+        // Utils.cleanup(map);
+    }
+    
+    
+    public static void mainx(String[] args) {
+        Map<String,String>map = (Map<String, String>) Utils.deserialize(new File("c:/tmp/mymap.ser"));
+        System.out.println("Deserialize=" + map.size());
+        // write(map);
+        read(map);
+        readKeySet(map);
+        System.out.println(map.get("X"));
+        
+        // map.clear();
+        // Utils.cleanup(map);
+    }
+
 
     public void close() throws IOException {
         try{
