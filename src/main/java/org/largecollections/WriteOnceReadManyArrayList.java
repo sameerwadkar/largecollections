@@ -15,6 +15,8 @@
  */
 package org.largecollections;
 
+import java.io.IOException;
+import java.io.Serializable;
 import java.util.Collection;
 import java.util.Iterator;
 import java.util.List;
@@ -25,7 +27,7 @@ import java.util.NoSuchElementException;
  * once and read many times. An element can be added to the list but cannot be removed.
  * 
  */
-public class WriteOnceReadManyArrayList<V> implements List<V> {
+public class WriteOnceReadManyArrayList<V> implements List<V>,Serializable {
 
     protected org.largecollections.HashMap<Integer,V> valueByIndex = new HashMap<Integer,V>();
     protected org.largecollections.HashMap<V,Integer> indexByValue = new HashMap<V,Integer>();
@@ -161,6 +163,20 @@ public class WriteOnceReadManyArrayList<V> implements List<V> {
     public List<V> subList(int fromIndex, int toIndex) {
         // TODO Auto-generated method stub
         throw new UnsupportedOperationException();    
+    }
+    
+    private void writeObject(java.io.ObjectOutputStream stream)
+            throws IOException {
+        stream.writeObject(this.indexByValue);
+        stream.writeObject(this.valueByIndex);
+    }
+
+    private void readObject(java.io.ObjectInputStream in) throws IOException,
+            ClassNotFoundException {
+        this.indexByValue = (org.largecollections.HashMap<V,Integer>) in.readObject();
+        this.valueByIndex = (org.largecollections.HashMap<Integer,V>) in.readObject();
+
+        
     }
 
     private final class MyIterator<V> implements Iterator<V> {
