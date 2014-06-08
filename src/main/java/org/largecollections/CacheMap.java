@@ -64,7 +64,7 @@ public class CacheMap<K, V>  implements Map<K,V>, Serializable, Closeable{
     protected transient File dbFile = null;
     protected transient Options options = null;
     private int size=0;
-    private long longSize=0;    
+    
 
     protected  DB createDB(String folderName, String name, int cacheSize,
             String comparatorCls) {
@@ -172,12 +172,9 @@ public class CacheMap<K, V>  implements Map<K,V>, Serializable, Closeable{
         return size;
     }
 
-    public long lsize(){
-        return this.longSize;
-    }
-    
+
     public boolean isEmpty() {
-        return longSize==0;
+        return size==0;
     }
 
     public V put(K key, V value) {
@@ -185,7 +182,7 @@ public class CacheMap<K, V>  implements Map<K,V>, Serializable, Closeable{
         if(v==null){
             db.put(Utils.serialize(key), Utils.serialize(value));
             size++;
-            longSize++;
+            
         }
         else{
             db.put(Utils.serialize(key), Utils.serialize(value));
@@ -198,7 +195,7 @@ public class CacheMap<K, V>  implements Map<K,V>, Serializable, Closeable{
         if(v!=null){
             db.delete(Utils.serialize(key));
             size--;
-            longSize--;
+            
         }
         return v;// Just a null to improve performance
     }
@@ -211,7 +208,7 @@ public class CacheMap<K, V>  implements Map<K,V>, Serializable, Closeable{
                 V v = this.get(e.getKey());
                 if(v==null){
                     this.size++;
-                    this.longSize++;
+                   
                 }
                 batch.put((Utils.serialize(e.getKey())),
                         Utils.serialize(e.getValue()));
@@ -235,7 +232,7 @@ public class CacheMap<K, V>  implements Map<K,V>, Serializable, Closeable{
         stream.writeInt(this.cacheSize);
         stream.writeObject(this.dbComparatorCls);
         stream.writeInt(this.size);
-        stream.writeLong(this.longSize);
+      
         this.db.close();
         
     }
@@ -247,7 +244,7 @@ public class CacheMap<K, V>  implements Map<K,V>, Serializable, Closeable{
         this.cacheSize = in.readInt();
         this.dbComparatorCls = (String) in.readObject();
         this.size = in.readInt();
-        this.longSize = in.readLong();
+       
         this.createDB();
         
     }
