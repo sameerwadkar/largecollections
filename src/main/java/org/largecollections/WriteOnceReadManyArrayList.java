@@ -15,6 +15,7 @@
  */
 package org.largecollections;
 
+import java.io.Closeable;
 import java.io.IOException;
 import java.io.Serializable;
 import java.util.Collection;
@@ -27,11 +28,16 @@ import java.util.NoSuchElementException;
  * once and read many times. An element can be added to the list but cannot be removed.
  * 
  */
-public class WriteOnceReadManyArrayList<V> implements List<V>,Serializable {
+public class WriteOnceReadManyArrayList<V> implements List<V>,Serializable,Closeable {
 
-    protected org.largecollections.HashMap<Integer,V> valueByIndex = new HashMap<Integer,V>();
-    protected org.largecollections.HashMap<V,Integer> indexByValue = new HashMap<V,Integer>();
+    protected org.largecollections.HashMap<Integer,V> valueByIndex = null;
+    protected org.largecollections.HashMap<V,Integer> indexByValue = null;
 
+    public WriteOnceReadManyArrayList(){
+        valueByIndex = new HashMap<Integer,V>();
+        indexByValue = new HashMap<V,Integer>();
+        
+    }
     public int size() {
         // TODO Auto-generated method stub
         return valueByIndex.size();
@@ -49,7 +55,7 @@ public class WriteOnceReadManyArrayList<V> implements List<V>,Serializable {
 
     public Iterator<V> iterator() {
         // TODO Auto-generated method stub
-        return null;
+        return new MyIterator<V>(this);
     }
 
     public Object[] toArray() {
@@ -185,11 +191,11 @@ public class WriteOnceReadManyArrayList<V> implements List<V>,Serializable {
         int size = -1;
         int index =-1;
         protected MyIterator(WriteOnceReadManyArrayList list){
-           list = list;
+           this.list = list;
            this.size=list.size();
         }
         public boolean hasNext() {
-            return (this.index<this.size);
+            return (this.index<(this.size-1));
         }
 
         public V next() {
@@ -216,7 +222,7 @@ public class WriteOnceReadManyArrayList<V> implements List<V>,Serializable {
         int size = -1;
         int index =-1;
         protected MyListIterator(WriteOnceReadManyArrayList list){
-           list = list;
+           this.list = list;
            this.size=list.size();
         }
         protected MyListIterator(WriteOnceReadManyArrayList list,int index){
@@ -228,7 +234,7 @@ public class WriteOnceReadManyArrayList<V> implements List<V>,Serializable {
             }
          }
         public boolean hasNext() {
-            return (this.index<this.size);
+            return (this.index<(this.size-1));
         }
 
         public V next() {
@@ -284,5 +290,9 @@ public class WriteOnceReadManyArrayList<V> implements List<V>,Serializable {
         public void add(V e) {
             throw new UnsupportedOperationException();
         }    
+    }
+    public void close() throws IOException {
+        this.indexByValue.close();
+        this.valueByIndex.close();        
     }
 }

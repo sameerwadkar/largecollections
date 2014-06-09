@@ -47,12 +47,12 @@ public class Utils {
         }
     }
 
-    public  static Map deserialize(File f) {
+    public  static Object deserialize(File f) {
         try
         {
            FileInputStream fileIn = new FileInputStream(f);
            ObjectInputStream in = new ObjectInputStream(fileIn);
-           Map m= (Map) in.readObject();
+           Object m= (Object) in.readObject();
            in.close();
            fileIn.close();
            return m;

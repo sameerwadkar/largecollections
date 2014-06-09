@@ -18,7 +18,7 @@ public class OffHeapMapTest2 {
     
     @Test
     public void test02SerializeMap() {
-        Map<String,String>map =  Utils.deserialize(new File("c:/tmp/mymap.ser"));
+        Map<String,String>map =  ( Map<String,String>)Utils.deserialize(new File("c:/tmp/mymap.ser"));
         read(map);
         readKeySet(map);
         map.put("X", "Y");

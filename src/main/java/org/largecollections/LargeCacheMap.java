@@ -52,11 +52,11 @@ public class LargeCacheMap<K, V>  implements Map<K,V>, Serializable, Closeable{
 
     private final static Random rnd = new Random();
     public static String DEFAULT_FOLDER = System.getProperty("java.io.tmpdir");
-    public static String DEFAULT_NAME = "TMP" + rnd.nextInt(1000000);
+    //public static String DEFAULT_NAME = "TMP" + rnd.nextInt(1000000);
     public static int DEFAULT_CACHE_SIZE = 25;
 
     protected String folder = DEFAULT_FOLDER;
-    protected String name = DEFAULT_NAME;
+    protected String name = null;
 
     protected transient DB db;
     protected int cacheSize = DEFAULT_CACHE_SIZE;
@@ -131,12 +131,12 @@ public class LargeCacheMap<K, V>  implements Map<K,V>, Serializable, Closeable{
     }
 
     public LargeCacheMap(String folder) {
-        this(folder, LargeCacheMap.DEFAULT_NAME, LargeCacheMap.DEFAULT_CACHE_SIZE,
+        this(folder, "TMP" + rnd.nextInt(1000000), LargeCacheMap.DEFAULT_CACHE_SIZE,
                 null);
     }
 
     public LargeCacheMap() {
-        this(LargeCacheMap.DEFAULT_FOLDER, LargeCacheMap.DEFAULT_NAME,
+        this(LargeCacheMap.DEFAULT_FOLDER, "TMP" + rnd.nextInt(1000000),
                 LargeCacheMap.DEFAULT_CACHE_SIZE, null);
     }
 

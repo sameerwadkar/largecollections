@@ -54,11 +54,11 @@ public class OffHeapMap<K, V> implements Map<K, V>, Serializable,  Closeable{
     public  static final long serialVersionUID = 1l;
     private final static Random rnd = new Random();
     public static String DEFAULT_FOLDER = System.getProperty("java.io.tmpdir");
-    public static String DEFAULT_NAME = "TMP" + rnd.nextInt(1000000);
+    //public static String DEFAULT_NAME = "TMP" + rnd.nextInt(1000000);
     public static int DEFAULT_CACHE_SIZE = 25;
 
     protected String folder = DEFAULT_FOLDER;
-    protected String name = DEFAULT_NAME;
+    protected String name = null;
 
     protected transient DB db;
     protected int cacheSize = DEFAULT_CACHE_SIZE;
@@ -133,12 +133,12 @@ public class OffHeapMap<K, V> implements Map<K, V>, Serializable,  Closeable{
     }
 
     public OffHeapMap(String folder) {
-        this(folder, OffHeapMap.DEFAULT_NAME, OffHeapMap.DEFAULT_CACHE_SIZE,
+        this(folder, "TMP" + rnd.nextInt(1000000), OffHeapMap.DEFAULT_CACHE_SIZE,
                 null);
     }
 
     public OffHeapMap() {
-        this(OffHeapMap.DEFAULT_FOLDER, OffHeapMap.DEFAULT_NAME,
+        this(OffHeapMap.DEFAULT_FOLDER, "TMP" + rnd.nextInt(1000000),
                 OffHeapMap.DEFAULT_CACHE_SIZE, null);
     }
 

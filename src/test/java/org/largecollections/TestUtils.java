@@ -1,11 +1,18 @@
 package org.largecollections;
 
+import java.util.List;
 import java.util.Map;
 import java.util.Random;
 import java.util.Set;
 
 public class TestUtils {
     public static int max = 1000;
+    public static void writeList(List<String> l){
+        for (int i = 0; i < max; i++) {
+            l.add(Integer.toString(i));
+        }
+    }
+    
     public static void read(Map<String, String> map) {
         Random rnd = new Random();
         Long ts = System.currentTimeMillis();
