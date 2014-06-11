@@ -250,12 +250,6 @@ public class CacheMap<K, V>  implements Map<K,V>, Serializable, Closeable{
         
     }
 
-    private String getPath() {
-        return this.folder + File.separator + this.name;
-    }
-
-    private boolean recreate = false;
-
     public void clear() {
         Set<K> keys = this.keySet();
         for(K k:keys){

@@ -508,7 +508,7 @@ public class OffHeapMap<K, V> implements Map<K, V>, Serializable,  Closeable{
         public java.util.Map.Entry<K, V> next() {
             // TODO Auto-generated method stub
             Entry<byte[], byte[]> entry = this.iter.next();
-            return new SimpleEntry((K) Utils.deserialize(entry.getKey()),
+            return new SimpleEntry<K,V>((K) Utils.deserialize(entry.getKey()),
                     (V) Utils.deserialize(entry.getValue()));
         }
 
@@ -518,107 +518,6 @@ public class OffHeapMap<K, V> implements Map<K, V>, Serializable,  Closeable{
 
     }
 
-    private static void read(Map<String, String> map) {
-        Random rnd = new Random();
-        Long ts = System.currentTimeMillis();
-        for (int i = 0; i < max; i++) {
-            String k = Integer.toString(rnd.nextInt(max));
-            String v = map.get(k);
-            if (i % (max / 10) == 0) {
-                System.out.println(k + "=" + v);
-            }
-        }
-        System.err.println("Time to read a  " + max + " rows "
-                + (System.currentTimeMillis() - ts));
-    }
-
-    private static void write(Map<String, String> map) {
-        long ts = System.currentTimeMillis();
-
-        for (int i = 0; i < max; i++) {
-            map.put(Integer.toString(i), Integer.toString(i));
-        }
-
-        System.err.println("Time to insert a  " + max + " rows "
-                + (System.currentTimeMillis() - ts));
-    }
-
-    private static void readEntrySet(Map<String, String> map) {
-        long ts = System.currentTimeMillis();
-
-        Set<Map.Entry<String, String>> set = map.entrySet();
-        int i = 0;
-        for (Map.Entry<String, String> e : set) {
-            if (i % (max / 10) == 0)
-                System.err.println(e.getKey() + "=" + e.getValue());
-            i++;
-        }
-        System.err.println("Time to insert a  " + max + " rows "
-                + (System.currentTimeMillis() - ts));
-    }
-    
-    private static void readKeySet(Map<String, String> map) {
-        long ts = System.currentTimeMillis();
-
-        Set<String> set = map.keySet();
-        int i = 0;
-        for (String e : set) {
-            //map.get(e);
-            if (i % (max / 10) == 0)
-                System.err.println(map.get(e));
-            i++;
-        }
-        System.err.println("Time to read KeySet a  " + max + " rows "
-                + (System.currentTimeMillis() - ts));
-    }
-
-    private static int max = 1000;
-
-    public static void main(String[] args) {
-
-        Map<String, String> map = new OffHeapMap<String, String>("c:/tmp/",
-                "bigsynapse");
-
-        write(map);
-        read(map);
-        readEntrySet(map);
-        Utils.serialize(map,new File("c:/tmp/mymap.ser"));
-        //((OffHeapMap)map).delete();
-        map = (Map<String, String>) Utils.deserialize(new File("c:/tmp/mymap.ser"));
-        System.out.println("Deserialize=" + map.size());
-        // write(map);
-        read(map);
-        readKeySet(map);
-        System.out.println(map.get("X"));
-        //Utils.serialize(map,new File("c:/tmp/mymap.ser"));
-        //Utils.cleanupOffHeapMap(map);
-
-
-    }
-    public static void mainb(String[] args) {
-        Map<String,String>map = (Map<String, String>) Utils.deserialize(new File("c:/tmp/mymap.ser"));
-        System.out.println("Deserialize=" + map.size());
-        // write(map);
-        read(map);
-        readKeySet(map);
-        map.put("X", "Y");
-        Utils.serialize(map,new File("c:/tmp/mymap2.ser"));
-        // map.clear();
-        // Utils.cleanup(map);
-    }
-    
-    
-    public static void mainx(String[] args) {
-        Map<String,String>map = (Map<String, String>) Utils.deserialize(new File("c:/tmp/mymap.ser"));
-        System.out.println("Deserialize=" + map.size());
-        // write(map);
-        read(map);
-        readKeySet(map);
-        System.out.println(map.get("X"));
-        
-        // map.clear();
-        // Utils.cleanup(map);
-    }
 
 
     public void close() throws IOException {

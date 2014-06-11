@@ -50,7 +50,7 @@ import com.google.common.base.Throwables;
 public class HashMap<K, V>  implements Map<K,V>, Serializable, Closeable{
     public  static final long serialVersionUID = 2l;
 
-    private final static Random rnd = new Random();
+    protected final static Random rnd = new Random();
     public static String DEFAULT_FOLDER = System.getProperty("java.io.tmpdir");
     //public static String DEFAULT_NAME = "TMP" + rnd.nextInt(1000000);
     public static int DEFAULT_CACHE_SIZE = 25;
@@ -63,8 +63,8 @@ public class HashMap<K, V>  implements Map<K,V>, Serializable, Closeable{
     protected String dbComparatorCls = null;
     protected transient File dbFile = null;
     protected transient Options options = null;
-    private int size=0;
-    private long longSize=0;    
+    protected int size=0;
+    protected long longSize=0;    
 
     protected  DB createDB(String folderName, String name, int cacheSize,
             String comparatorCls) {
@@ -99,6 +99,9 @@ public class HashMap<K, V>  implements Map<K,V>, Serializable, Closeable{
                 this.dbComparatorCls);
     }
 
+    protected DB getDB(){
+        return this.db;
+    }
     
     public HashMap(String folder, String name, int cacheSize,
             String comparatorCls) {
@@ -251,11 +254,6 @@ public class HashMap<K, V>  implements Map<K,V>, Serializable, Closeable{
         
     }
 
-    private String getPath() {
-        return this.folder + File.separator + this.name;
-    }
-
-    private boolean recreate = false;
 
     public void clear() {
         Set<K> keys = this.keySet();
@@ -271,15 +269,15 @@ public class HashMap<K, V>  implements Map<K,V>, Serializable, Closeable{
 
 
     public Set<K> keySet() {
-        return new OffHeapSet<K>(this);
+        return new HashMapKeySet<K>(this);
     }
     public Collection<V> values() {
-        return new OffHeapCollection(this);
+        return new HashMapCollection<V>(this);
     }
 
     public Set<java.util.Map.Entry<K, V>> entrySet() {
         // Return an Iterator backed by the DB
-        return new OffHeapEntrySet(this);
+        return new HashMapEntrySet<K,V>(this);
     }
 
     private DB getDb() {
@@ -292,10 +290,10 @@ public class HashMap<K, V>  implements Map<K,V>, Serializable, Closeable{
      * @param args
      */
 
-    private final class OffHeapCollection<V> implements Collection<V> {
-        private HashMap map = null;
+    private final class HashMapCollection<V> implements Collection<V> {
+        private HashMap<K,V> map = null;
 
-        public OffHeapCollection(HashMap map) {
+        public HashMapCollection(HashMap<K,V> map) {
             this.map = map;
         }
 
@@ -315,7 +313,7 @@ public class HashMap<K, V>  implements Map<K,V>, Serializable, Closeable{
         }
 
         public Iterator<V> iterator() {
-            throw new UnsupportedOperationException();
+            return new ValueIterator<V>(this.map.getDb());
         }
 
         public Object[] toArray() {
@@ -347,7 +345,8 @@ public class HashMap<K, V>  implements Map<K,V>, Serializable, Closeable{
 
         public boolean removeAll(Collection<?> c) {
             // TODO Auto-generated method stub
-            throw new UnsupportedOperationException();
+            this.map.clear();
+            return true;
         }
 
         public boolean retainAll(Collection<?> c) {
@@ -362,10 +361,10 @@ public class HashMap<K, V>  implements Map<K,V>, Serializable, Closeable{
 
     }
 
-    private final class OffHeapSet<K> implements Set<K> {
+    private final class HashMapKeySet<K> implements Set<K> {
         private HashMap map = null;
 
-        public OffHeapSet(HashMap map) {
+        public HashMapKeySet(HashMap map) {
             this.map = map;
         }
 
@@ -380,13 +379,13 @@ public class HashMap<K, V>  implements Map<K,V>, Serializable, Closeable{
         }
 
         public boolean contains(Object o) {
-            // TODO Auto-generated method stub
+
             return map.containsKey(o);
         }
 
         public Iterator<K> iterator() {
             // TODO Auto-generated method stub
-            return new KeyIterator<K>(this.map);
+            return new KeyIterator<K>(this.map.getDb());
         }
 
         public Object[] toArray() {
@@ -447,40 +446,13 @@ public class HashMap<K, V>  implements Map<K,V>, Serializable, Closeable{
 
     }
 
-    private final class KeyIterator<K> implements Iterator<K> {
-
-        private DBIterator iter = null;
-
-        public KeyIterator(HashMap map) {
-            this.iter = map.getDb().iterator();
-            this.iter.seekToFirst();
-        }
-
-        public boolean hasNext() {
-            // TODO Auto-generated method stub
-            return this.iter.hasNext();
-        }
-
-        public K next() {
-            // TODO Auto-generated method stub
-            Entry<byte[], byte[]> entry = this.iter.next();
-            return (K) Utils.deserialize(entry.getKey());
-        }
-
-        public void remove() {
-            // TODO Auto-generated method stub
-            this.iter.remove();
-        }
-
-    }
-
-    private final class OffHeapEntrySet<K, V> extends
+    private final class HashMapEntrySet<K, V> extends
             AbstractSet<Map.Entry<K, V>> {
-        private EntryIterator iterator = null;
-        private Map LargeCacheMap = null;
+        private EntryIterator<K,V> iterator = null;
+        private Map<K,V> LargeCacheMap = null;
 
-        public OffHeapEntrySet(HashMap map) {
-            this.iterator = new EntryIterator(map);
+        public HashMapEntrySet(HashMap<K,V> map) {
+            this.iterator = new EntryIterator<K,V>(map.getDb());
             this.LargeCacheMap = map;
         }
 
@@ -498,145 +470,8 @@ public class HashMap<K, V>  implements Map<K,V>, Serializable, Closeable{
 
     }
 
-    private final class EntryIterator<K, V> implements
-            Iterator<java.util.Map.Entry<K, V>> {
-
-        private DBIterator iter = null;
-
-        public EntryIterator(HashMap map) {
-
-            try {
-                this.iter = map.getDb().iterator();
-                //this.iter.close();
-                if(this.iter.hasPrev())
-                    this.iter.seekToLast();
-                this.iter.seekToFirst();
-            } catch (Exception ex) {
-                Throwables.propagate(ex);
-            }
-
-        }
-
-        public boolean hasNext() {
-            // TODO Auto-generated method stub
-            boolean hasNext = iter.hasNext();
-            return hasNext;
-        }
-
-        public java.util.Map.Entry<K, V> next() {
-            // TODO Auto-generated method stub
-            Entry<byte[], byte[]> entry = this.iter.next();
-            return new SimpleEntry((K) Utils.deserialize(entry.getKey()),
-                    (V) Utils.deserialize(entry.getValue()));
-        }
-
-        public void remove() {
-            this.iter.remove();
-        }
-
-    }
-
-    private static void read(Map<String, String> map) {
-        Random rnd = new Random();
-        Long ts = System.currentTimeMillis();
-        for (int i = 0; i < max; i++) {
-            String k = Integer.toString(rnd.nextInt(max));
-            String v = map.get(k);
-            if (i % (max / 10) == 0) {
-                System.out.println(k + "=" + v);
-            }
-        }
-        System.err.println("Time to read a  " + max + " rows "
-                + (System.currentTimeMillis() - ts));
-    }
-
-    private static void write(Map<String, String> map) {
-        long ts = System.currentTimeMillis();
-
-        for (int i = 0; i < max; i++) {
-            map.put(Integer.toString(i), Integer.toString(i));
-        }
-
-        System.err.println("Time to insert a  " + max + " rows "
-                + (System.currentTimeMillis() - ts));
-    }
-
-    private static void readEntrySet(Map<String, String> map) {
-        long ts = System.currentTimeMillis();
-
-        Set<Map.Entry<String, String>> set = map.entrySet();
-        int i = 0;
-        for (Map.Entry<String, String> e : set) {
-            if (i % (max / 10) == 0)
-                System.err.println(e.getKey() + "=" + e.getValue());
-            i++;
-        }
-        System.err.println("Time to insert a  " + max + " rows "
-                + (System.currentTimeMillis() - ts));
-    }
-    
-    private static void readKeySet(Map<String, String> map) {
-        long ts = System.currentTimeMillis();
-
-        Set<String> set = map.keySet();
-        int i = 0;
-        for (String e : set) {
-            //map.get(e);
-            if (i % (max / 10) == 0)
-                System.err.println(map.get(e));
-            i++;
-        }
-        System.err.println("Time to read KeySet a  " + max + " rows "
-                + (System.currentTimeMillis() - ts));
-    }
-
-    private static int max = 1000;
-
-    public static void main(String[] args) {
-
-        Map<String, String> map = new HashMap<String, String>("c:/tmp/",
-                "bigsynapse");
-
-        write(map);
-        read(map);
-        readEntrySet(map);
-        Utils.serialize(map,new File("c:/tmp/mymap.ser"));
-        //((LargeCacheMap)map).delete();
-        map = (Map<String, String>) Utils.deserialize(new File("c:/tmp/mymap.ser"));
-        System.out.println("Deserialize=" + map.size());
-        // write(map);
-        read(map);
-        readKeySet(map);
-        System.out.println(map.get("X"));
-        //Utils.serialize(map,new File("c:/tmp/mymap.ser"));
-        //Utils.cleanupLargeCacheMap(map);
 
 
-    }
-    public static void mainb(String[] args) {
-        Map<String,String>map = (Map<String, String>) Utils.deserialize(new File("c:/tmp/mymap.ser"));
-        System.out.println("Deserialize=" + map.size());
-        // write(map);
-        read(map);
-        readKeySet(map);
-        map.put("X", "Y");
-        Utils.serialize(map,new File("c:/tmp/mymap2.ser"));
-        // map.clear();
-        // Utils.cleanup(map);
-    }
-    
-    
-    public static void mainx(String[] args) {
-        Map<String,String>map = (Map<String, String>) Utils.deserialize(new File("c:/tmp/mymap.ser"));
-        System.out.println("Deserialize=" + map.size());
-        // write(map);
-        read(map);
-        readKeySet(map);
-        System.out.println(map.get("X"));
-        
-        // map.clear();
-        // Utils.cleanup(map);
-    }
 
 
     public void close() throws IOException {

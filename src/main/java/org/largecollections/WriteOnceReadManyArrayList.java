@@ -29,7 +29,7 @@ import java.util.NoSuchElementException;
  * 
  */
 public class WriteOnceReadManyArrayList<V> implements List<V>,Serializable,Closeable {
-
+    public  static final long serialVersionUID = 1l;
     protected org.largecollections.HashMap<Integer,V> valueByIndex = null;
     protected org.largecollections.HashMap<V,Integer> indexByValue = null;
 
