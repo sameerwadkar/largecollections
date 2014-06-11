@@ -20,7 +20,7 @@ public class HashMapTest {
     public void test01SerializeMap() throws Exception{
     
         TestUtils.max=1000;
-        HashMap<String, String> map = new HashMap<String, String>("c:/tmp/",
+        FactoryHashMap<String, String> map = new FactoryHashMap<String, String>("c:/tmp/",
                 "cacheMap");
 
         write(map);

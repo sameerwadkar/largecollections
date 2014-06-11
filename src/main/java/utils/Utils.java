@@ -75,6 +75,25 @@ public class Utils {
         }
     }
     
+    public  static byte[] serialize(String cacheName,Object obj) {
+        try{
+            byte[] nameBArry = (cacheName+'\0').getBytes();
+            ByteArrayOutputStream b = new ByteArrayOutputStream();
+            ObjectOutputStream o = new ObjectOutputStream(b);
+            o.writeObject(obj);
+            byte[] bArray = b.toByteArray();
+            byte[] combined = new byte[nameBArry.length + bArray.length];
+
+            System.arraycopy(nameBArry,0,combined,0         ,nameBArry.length);
+            System.arraycopy(bArray,0,combined,nameBArry.length,bArray.length);
+            return b.toByteArray();
+        }
+        catch(Exception ex){
+            throw new RuntimeException(ex);
+        }
+    }
+
+    
     public static  Object deserialize(byte[] bytes)  {
         try{
         ByteArrayInputStream b = new ByteArrayInputStream(bytes);

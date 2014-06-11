@@ -30,12 +30,12 @@ import java.util.NoSuchElementException;
  */
 public class WriteOnceReadManyArrayList<V> implements List<V>,Serializable,Closeable {
     public  static final long serialVersionUID = 1l;
-    protected org.largecollections.HashMap<Integer,V> valueByIndex = null;
-    protected org.largecollections.HashMap<V,Integer> indexByValue = null;
+    protected org.largecollections.FactoryHashMap<Integer,V> valueByIndex = null;
+    protected org.largecollections.FactoryHashMap<V,Integer> indexByValue = null;
 
     public WriteOnceReadManyArrayList(){
-        valueByIndex = new HashMap<Integer,V>();
-        indexByValue = new HashMap<V,Integer>();
+        valueByIndex = new FactoryHashMap<Integer,V>();
+        indexByValue = new FactoryHashMap<V,Integer>();
         
     }
     public int size() {
@@ -179,8 +179,8 @@ public class WriteOnceReadManyArrayList<V> implements List<V>,Serializable,Close
 
     private void readObject(java.io.ObjectInputStream in) throws IOException,
             ClassNotFoundException {
-        this.indexByValue = (org.largecollections.HashMap<V,Integer>) in.readObject();
-        this.valueByIndex = (org.largecollections.HashMap<Integer,V>) in.readObject();
+        this.indexByValue = (org.largecollections.FactoryHashMap<V,Integer>) in.readObject();
+        this.valueByIndex = (org.largecollections.FactoryHashMap<Integer,V>) in.readObject();
 
         
     }
