@@ -30,12 +30,12 @@ import java.util.NoSuchElementException;
  */
 public class WriteOnceReadManyArrayList<V> implements List<V>,Serializable,Closeable {
     public  static final long serialVersionUID = 1l;
-    protected org.largecollections.FactoryHashMap<Integer,V> valueByIndex = null;
-    protected org.largecollections.FactoryHashMap<V,Integer> indexByValue = null;
+    protected CacheMap<Integer,V> valueByIndex = null;
+    protected CacheMap<V,Integer> indexByValue = null;
 
     public WriteOnceReadManyArrayList(){
-        valueByIndex = new FactoryHashMap<Integer,V>();
-        indexByValue = new FactoryHashMap<V,Integer>();
+        valueByIndex = new CacheMap<Integer,V>();
+        indexByValue = new CacheMap<V,Integer>();
         
     }
     public int size() {
@@ -50,7 +50,7 @@ public class WriteOnceReadManyArrayList<V> implements List<V>,Serializable,Close
 
     public boolean contains(Object o) {
         // TODO Auto-generated method stub
-        return (indexByValue.get(0)!=null);
+        return (indexByValue.get(o)!=null);
     }
 
     public Iterator<V> iterator() {
@@ -179,8 +179,8 @@ public class WriteOnceReadManyArrayList<V> implements List<V>,Serializable,Close
 
     private void readObject(java.io.ObjectInputStream in) throws IOException,
             ClassNotFoundException {
-        this.indexByValue = (org.largecollections.FactoryHashMap<V,Integer>) in.readObject();
-        this.valueByIndex = (org.largecollections.FactoryHashMap<Integer,V>) in.readObject();
+        this.indexByValue = (CacheMap<V,Integer>) in.readObject();
+        this.valueByIndex = (CacheMap<Integer,V>) in.readObject();
 
         
     }
