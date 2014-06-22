@@ -34,10 +34,12 @@ Usage
 ================
 
 By default just use
+
+```java
 java.util.Map<MyKeyClass,MyValueClass> m = new OffHeapMap<MyKeyClass,MyValueClass>();<br/>
 //Or java.util.Map<MyKeyClass,MyValueClass> m = new CacheMap<MyKeyClass,MyValueClass>();<br/>
 //Or java.util.Map<MyKeyClass,MyValueClass> m = new LargeCacheMap<MyKeyClass,MyValueClass>();<br/>
 //Or java.util.Set<MyClass> m = new CacheSet<MyClass>();<br/>
 //Use like a regular java.util.Map<br/>
-At the end clean up as follows<br/>
+/*At the end clean up as follows*/
 ((java.io.Closeable)m).close()<br/>
