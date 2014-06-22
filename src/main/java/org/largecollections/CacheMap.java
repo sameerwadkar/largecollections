@@ -218,7 +218,7 @@ public class CacheMap<K, V>  implements Map<K,V>,IMap, Serializable, Closeable{
 
 
     public Set<K> keySet() {
-        return new MapSet<K>(this);
+        return new MapKeySet<K>(this);
     }
     public Collection<V> values() {
         return new MapCollection<V>(this);
@@ -226,7 +226,7 @@ public class CacheMap<K, V>  implements Map<K,V>,IMap, Serializable, Closeable{
 
     public Set<java.util.Map.Entry<K, V>> entrySet() {
         // Return an Iterator backed by the DB
-        return new EntrySet<K,V>(this);
+        return new MapEntrySet<K,V>(this);
     }
 
     public void close() throws IOException {

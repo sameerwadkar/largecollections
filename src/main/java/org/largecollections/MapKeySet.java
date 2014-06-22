@@ -1,3 +1,18 @@
+/*
+ * Copyright 2014 Sameer Wadkar
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *        http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 package org.largecollections;
 
 import java.util.Collection;
@@ -7,10 +22,10 @@ import java.util.Set;
 
 import org.iq80.leveldb.DB;
 
-public  class MapSet<K> implements Set<K> {
+public  class MapKeySet<K> implements Set<K> {
     private Map<K,?> map = null;
     private DB db = null;
-    protected MapSet(Map<K,?> map) {
+    protected MapKeySet(Map<K,?> map) {
         this.map = map;
         this.db = ((IMap)this.map).getDB();
     }
@@ -28,7 +43,7 @@ public  class MapSet<K> implements Set<K> {
     }
 
     public Iterator<K> iterator() {
-        return new KeyIterator<K>(this.db);
+        return new MapKeyIterator<K>(this.db);
     }
 
     public Object[] toArray() {

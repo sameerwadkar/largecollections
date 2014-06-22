@@ -50,7 +50,7 @@ import com.google.common.base.Throwables;
  * typical Map implementation. In return it allows LargeCacheMap to have size higher than Integer.MAX_VALUE
  * 
  */
-public class FastCacheMap<K, V> implements Map<K, V>, Serializable,  Closeable{
+public class FastCacheMap<K, V> implements Map<K, V>, Serializable,  Closeable,IMap{
     public  static final long serialVersionUID = 1l;
     private final static Random rnd = new Random();
     public static String DEFAULT_FOLDER = System.getProperty("java.io.tmpdir");
@@ -65,42 +65,8 @@ public class FastCacheMap<K, V> implements Map<K, V>, Serializable,  Closeable{
     protected String dbComparatorCls = null;
     protected transient File dbFile = null;
     protected transient Options options = null;
-    // private transient DBComparator comparator = null;
-
-    protected  DB createDB(String folderName, String name, int cacheSize,
-            String comparatorCls) {
-        //System.setProperty("java.io.timedir", folderName);
-        DB db = null;
-        try {
-            this.options = new Options();
-            options.cacheSize(cacheSize * 1048576); // 100MB cache
-            ;
-
-            if (comparatorCls != null) {
-                Class c = Class.forName(comparatorCls);
-                options.comparator((DBComparator) c.newInstance());
-            }
-            ///this.dbFile = File.createTempFile(name, null);
-            this.dbFile = new File(this.folder+File.separator+this.name);
-            if(!this.dbFile.exists()){
-                this.dbFile.mkdirs();
-            }
-            
-            //new File(folderName + File.separator + name)
-            db = factory.open(this.dbFile,options);
-        } catch (Exception ex) {
-            Throwables.propagate(ex);
-        }
-        return db;
-
-    }
 
     
-    public DB createDB() {
-        return createDB(this.folder, this.name, this.cacheSize,
-                this.dbComparatorCls);
-    }
-
     
     public FastCacheMap(String folder, String name, int cacheSize,
             String comparatorCls) {
@@ -115,13 +81,13 @@ public class FastCacheMap<K, V> implements Map<K, V>, Serializable,  Closeable{
             if (cacheSize > 0)
                 this.cacheSize = cacheSize;
             this.dbComparatorCls = comparatorCls;
-            this.db = this.createDB(this.folder, this.name, this.cacheSize,
-                    this.dbComparatorCls);
-
+            Map m = Utils.createDB(this.folder, this.name, this.cacheSize);
+            this.db = (DB)m.get(Constants.DB_KEY);
+            this.options = (Options)m.get(Constants.DB_OPTIONS_KEY);
+            this.dbFile = (File) m.get(Constants.DB_FILE_KEY);
         } catch (Exception ex) {
             Throwables.propagate(ex);
         }
-
     }
 
     public FastCacheMap(String folder, String name, int cacheSize) {
@@ -217,12 +183,7 @@ public class FastCacheMap<K, V> implements Map<K, V>, Serializable,  Closeable{
 
     }
 
-    private String getPath() {
-        return this.folder + File.separator + this.name;
-    }
-
-    private boolean recreate = false;
-
+   
     public void clear() {
         Set<K> keys = this.keySet();
         for(K k:keys){
@@ -237,27 +198,23 @@ public class FastCacheMap<K, V> implements Map<K, V>, Serializable,  Closeable{
 
 
     public Set<K> keySet() {
-        return new FastMapKeySet<K>(this);
+        return new MapKeySet<K>(this);
     }
     public Collection<V> values() {
-        return new FastMapCollection(this);
+        return new MapCollection<V>(this);
     }
 
     public Set<java.util.Map.Entry<K, V>> entrySet() {
         // Return an Iterator backed by the DB
-        return new FastMapEntrySet(this);
+        return new MapEntrySet<K,V>(this);
     }
 
-    private DB getDb() {
-        return db;
-    }
 
     private void writeObject(java.io.ObjectOutputStream stream)
             throws IOException {
         stream.writeObject(this.folder);
         stream.writeObject(this.name);
         stream.writeInt(this.cacheSize);
-        stream.writeObject(this.dbComparatorCls);
     }
 
     private void readObject(java.io.ObjectInputStream in) throws IOException,
@@ -265,9 +222,10 @@ public class FastCacheMap<K, V> implements Map<K, V>, Serializable,  Closeable{
         this.folder = (String) in.readObject();
         this.name = (String) in.readObject();
         this.cacheSize = in.readInt();
-        this.dbComparatorCls = (String) in.readObject();
-        this.db = this.createDB(this.folder, this.name, this.cacheSize,
-                this.dbComparatorCls);
+        Map m = Utils.createDB(this.folder, this.name, this.cacheSize);
+        this.db = (DB)m.get(Constants.DB_KEY);
+        this.options = (Options)m.get(Constants.DB_OPTIONS_KEY);
+        this.dbFile = (File) m.get(Constants.DB_FILE_KEY);
     }
     public void close() throws IOException {
         try{
@@ -283,249 +241,15 @@ public class FastCacheMap<K, V> implements Map<K, V>, Serializable,  Closeable{
      * @param args
      */
 
-    private final class FastMapCollection<V> implements Collection<V> {
-        private FastCacheMap map = null;
-
-        public FastMapCollection(FastCacheMap map) {
-            this.map = map;
-        }
-
-        public int size() {
-            // TODO Auto-generated method stub
-            return this.map.size();
-        }
-
-        public boolean isEmpty() {
-            // TODO Auto-generated method stub
-            return this.map.isEmpty();
-        }
-
-        public boolean contains(Object o) {
-            // TODO Auto-generated method stub
-            return this.map.containsKey(o);
-        }
-
-        public Iterator<V> iterator() {
-            throw new UnsupportedOperationException();
-        }
-
-        public Object[] toArray() {
-            throw new UnsupportedOperationException();
-        }
-
-        public <T> T[] toArray(T[] a) {
-            throw new UnsupportedOperationException();
-        }
-
-        public boolean add(V e) {
-            throw new UnsupportedOperationException();
-        }
-
-        public boolean remove(Object o) {
-            // TODO Auto-generated method stub
-            return (this.map.remove(o) != null);
-        }
-
-        public boolean containsAll(Collection<?> c) {
-            // TODO Auto-generated method stub
-            throw new UnsupportedOperationException();
-        }
-
-        public boolean addAll(Collection<? extends V> c) {
-            // TODO Auto-generated method stub
-            throw new UnsupportedOperationException();
-        }
-
-        public boolean removeAll(Collection<?> c) {
-            // TODO Auto-generated method stub
-            throw new UnsupportedOperationException();
-        }
-
-        public boolean retainAll(Collection<?> c) {
-            // TODO Auto-generated method stub
-            throw new UnsupportedOperationException();
-        }
-
-        public void clear() {
-            // TODO Auto-generated method stub
-            this.map.clear();
-        }
-
+  
+   
+    public DB getDB() {
+        return db;
     }
 
-    private final class FastMapKeySet<K> implements Set<K> {
-        private FastCacheMap map = null;
 
-        public FastMapKeySet(FastCacheMap map) {
-            this.map = map;
-        }
 
-        public int size() {
-            // TODO Auto-generated method stub
-            return map.size();
-        }
 
-        public boolean isEmpty() {
-            // TODO Auto-generated method stub
-            return map.isEmpty();
-        }
-
-        public boolean contains(Object o) {
-            // TODO Auto-generated method stub
-            return map.containsKey(o);
-        }
-
-        public Iterator<K> iterator() {
-            // TODO Auto-generated method stub
-            return new KeyIterator<K>(this.map);
-        }
-
-        public Object[] toArray() {
-            // TODO Auto-generated method stub
-            throw new UnsupportedOperationException();
-        }
-
-        public <T> T[] toArray(T[] a) {
-            // TODO Auto-generated method stub
-            throw new UnsupportedOperationException();
-        }
-
-        public boolean add(K e) {
-            // TODO Auto-generated method stub
-            throw new UnsupportedOperationException();
-        }
-
-        public boolean remove(Object o) {
-            // TODO Auto-generated method stub
-            this.map.remove(o);
-            return true;
-        }
-
-        public boolean containsAll(Collection<?> c) {
-            // TODO Auto-generated method stub
-            if (c != null) {
-                for (Object o : c) {
-                    if (this.map.get(o) == null) {
-                        return false;
-                    }
-                }
-            }
-            return true;
-        }
-
-        public boolean addAll(Collection<? extends K> c) {
-            // TODO Auto-generated method stub
-            throw new UnsupportedOperationException();
-        }
-
-        public boolean retainAll(Collection<?> c) {
-            // TODO Auto-generated method stub
-            throw new UnsupportedOperationException();
-        }
-
-        public boolean removeAll(Collection<?> c) {
-            // TODO Auto-generated method stub
-            for (Object o : c) {
-                this.map.remove(o);
-            }
-            return true;
-        }
-
-        public void clear() {
-            // TODO Auto-generated method stub
-            this.map.clear();
-        }
-
-    }
-
-    private final class KeyIterator<K> implements Iterator<K> {
-
-        private DBIterator iter = null;
-
-        public KeyIterator(FastCacheMap map) {
-            this.iter = map.getDb().iterator();
-            this.iter.seekToFirst();
-        }
-
-        public boolean hasNext() {
-            // TODO Auto-generated method stub
-            return this.iter.hasNext();
-        }
-
-        public K next() {
-            // TODO Auto-generated method stub
-            Entry<byte[], byte[]> entry = this.iter.next();
-            return (K) Utils.deserialize(entry.getKey());
-        }
-
-        public void remove() {
-            // TODO Auto-generated method stub
-            this.iter.remove();
-        }
-
-    }
-
-    private final class FastMapEntrySet<K, V> extends
-            AbstractSet<Map.Entry<K, V>> {
-        private EntryIterator iterator = null;
-        private Map offHeapMap = null;
-
-        public FastMapEntrySet(FastCacheMap map) {
-            this.iterator = new EntryIterator(map);
-            this.offHeapMap = map;
-        }
-
-        @Override
-        public Iterator<java.util.Map.Entry<K, V>> iterator() {
-            // TODO Auto-generated method stub
-            return this.iterator;
-        }
-
-        @Override
-        public int size() {
-            // TODO Auto-generated method stub
-            return this.offHeapMap.size();
-        }
-
-    }
-
-    private final class EntryIterator<K, V> implements
-            Iterator<java.util.Map.Entry<K, V>> {
-
-        private DBIterator iter = null;
-
-        public EntryIterator(FastCacheMap map) {
-
-            try {
-                this.iter = map.getDb().iterator();
-                //this.iter.close();
-                if(this.iter.hasPrev())
-                    this.iter.seekToLast();
-                this.iter.seekToFirst();
-            } catch (Exception ex) {
-                Throwables.propagate(ex);
-            }
-
-        }
-
-        public boolean hasNext() {
-            // TODO Auto-generated method stub
-            boolean hasNext = iter.hasNext();
-            return hasNext;
-        }
-
-        public java.util.Map.Entry<K, V> next() {
-            // TODO Auto-generated method stub
-            Entry<byte[], byte[]> entry = this.iter.next();
-            return new SimpleEntry<K,V>((K) Utils.deserialize(entry.getKey()),
-                    (V) Utils.deserialize(entry.getValue()));
-        }
-
-        public void remove() {
-            this.iter.remove();
-        }
-
-    }
 
 
 
