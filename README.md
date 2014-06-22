@@ -9,6 +9,7 @@ Currrently this API supports three types of Collections
 2. java.util.List (WriteOnce Read Many times semantics)
 3. java.util.Set
 
+Currently all key/value classes need to support java.io.Serializable. Soon I will support org.apache.hadoop.io.Writable as well.
 
 It sticks to the spirit of "Convention over Customization". By default it uses the folder defined by the System Property 
 "java.io.tmpdir" to store the files it needs to support the datastore which backs the map. However the user can customize the
