@@ -12,7 +12,7 @@ public final class KeyIterator<K> implements Iterator<K> {
 
     private DBIterator iter = null;
 
-    public KeyIterator(DB db) {
+    protected KeyIterator(DB db) {
         this.iter =db.iterator();
         this.iter.seekToFirst();
     }

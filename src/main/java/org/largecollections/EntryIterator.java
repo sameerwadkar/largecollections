@@ -16,7 +16,7 @@ public final class EntryIterator<K, V> implements
 
     private DBIterator iter = null;
 
-    public EntryIterator(DB db) {
+    protected EntryIterator(DB db) {
 
         try {
             this.iter = db.iterator();

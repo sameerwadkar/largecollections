@@ -12,7 +12,7 @@ public final class ValueIterator<V> implements Iterator<V> {
 
     private DBIterator iter = null;
 
-    public ValueIterator(DB db) {
+    protected ValueIterator(DB db) {
         this.iter = db.iterator();
         this.iter.seekToFirst();
     }

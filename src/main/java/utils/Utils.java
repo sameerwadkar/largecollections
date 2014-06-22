@@ -16,6 +16,8 @@
 
 package utils;
 
+import static org.fusesource.leveldbjni.JniDBFactory.factory;
+
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.File;
@@ -24,10 +26,17 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
+import java.util.HashMap;
 import java.util.Map;
 
 import org.apache.commons.io.FileUtils;
-import org.largecollections.OffHeapMap;
+import org.iq80.leveldb.DB;
+import org.iq80.leveldb.DBComparator;
+import org.iq80.leveldb.Options;
+
+
+
+import org.largecollections.Constants;
 
 import com.google.common.base.Throwables;
 
@@ -138,14 +147,41 @@ public class Utils {
           }
         }
       }
-    public  static void deleteOffHeapMap(Map m)  {
-        try{
-            OffHeapMap ohm = (OffHeapMap)m;
-            ohm.close();     
-        }
-        catch(Exception ex){
+    
+
+    public  static Map createDB(String Options, String name, int cacheSize) {
+        //System.setProperty("java.io.timedir", folderName);
+        DB db=null;
+        Options options = null;
+        File dbFile = null;
+        try {
+            //Thread.currentThread().sleep(3000);
+            options = new Options();
+            options.cacheSize(cacheSize * 1048576); // 100MB cache
+            
+
+            ///this.dbFile = File.createTempFile(name, null);
+            dbFile = new File(Options+File.separator+name);
+            if(!dbFile.exists()){
+                dbFile.mkdirs();
+            }
+            
+            //new File(folderName + File.separator + name)
+            db = factory.open(dbFile,options);
+
+        } catch (Exception ex) {
             Throwables.propagate(ex);
         }
+        HashMap m = new HashMap();
+        m.put(Constants.DB_KEY, db);
+        m.put(Constants.DB_FILE_KEY, dbFile);
+        m.put(Constants.DB_OPTIONS_KEY, options);
+        return m;
 
-      }
+    }
+    
+    public void destroyDB(){
+        
+    }
+
 }

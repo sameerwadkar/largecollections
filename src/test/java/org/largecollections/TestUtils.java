@@ -30,6 +30,26 @@ public class TestUtils {
                 + (System.currentTimeMillis() - ts));
     }
 
+    public static void read(Set<String> set) {
+        Random rnd = new Random();
+        Long ts = System.currentTimeMillis();
+        for (String s:set) {
+            //System.err.println("Set:"+s);
+        }
+        System.err.println("Time to randomly read a  " + max + " rows "
+                + (System.currentTimeMillis() - ts));
+    }
+    
+    public static void quickRead(Set<String> set) {
+        Random rnd = new Random();
+        Long ts = System.currentTimeMillis();
+        System.err.println("Read First Element");
+        for (String s:set) {
+            System.err.println("Quick Read Value:"+s);
+            break;
+        }
+        
+    }
     
      public static void write(Map<String, String> map) {
         long ts = System.currentTimeMillis();
@@ -41,6 +61,18 @@ public class TestUtils {
         System.err.println("Time to insert a  " + max + " rows "
                 + (System.currentTimeMillis() - ts));
     }
+     
+     public static void write(Set<String> set) {
+         long ts = System.currentTimeMillis();
+
+         for (int i = 0; i < max; i++) {
+             set.add(Integer.toString(i));
+            
+         }
+
+         System.err.println("Time to insert a  " + max + " rows "
+                 + (System.currentTimeMillis() - ts));
+     }
 
      public static void readEntrySet(Map<String, String> map) {
         long ts = System.currentTimeMillis();

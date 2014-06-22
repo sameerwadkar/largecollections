@@ -50,7 +50,7 @@ import com.google.common.base.Throwables;
  * typical Map implementation. In return it allows LargeCacheMap to have size higher than Integer.MAX_VALUE
  * 
  */
-public class FastHashMap<K, V> implements Map<K, V>, Serializable,  Closeable{
+public class FastCacheMap<K, V> implements Map<K, V>, Serializable,  Closeable{
     public  static final long serialVersionUID = 1l;
     private final static Random rnd = new Random();
     public static String DEFAULT_FOLDER = System.getProperty("java.io.tmpdir");
@@ -102,7 +102,7 @@ public class FastHashMap<K, V> implements Map<K, V>, Serializable,  Closeable{
     }
 
     
-    public FastHashMap(String folder, String name, int cacheSize,
+    public FastCacheMap(String folder, String name, int cacheSize,
             String comparatorCls) {
         try {
             if (!StringUtils.isEmpty(name)) {
@@ -124,22 +124,22 @@ public class FastHashMap<K, V> implements Map<K, V>, Serializable,  Closeable{
 
     }
 
-    public FastHashMap(String folder, String name, int cacheSize) {
+    public FastCacheMap(String folder, String name, int cacheSize) {
         this(folder, name, cacheSize, null);
     }
 
-    public FastHashMap(String folder, String name) {
-        this(folder, name, FastHashMap.DEFAULT_CACHE_SIZE, null);
+    public FastCacheMap(String folder, String name) {
+        this(folder, name, FastCacheMap.DEFAULT_CACHE_SIZE, null);
     }
 
-    public FastHashMap(String folder) {
-        this(folder, "TMP" + rnd.nextInt(1000000), FastHashMap.DEFAULT_CACHE_SIZE,
+    public FastCacheMap(String folder) {
+        this(folder, "TMP" + rnd.nextInt(1000000), FastCacheMap.DEFAULT_CACHE_SIZE,
                 null);
     }
 
-    public FastHashMap() {
-        this(FastHashMap.DEFAULT_FOLDER, "TMP" + rnd.nextInt(1000000),
-                FastHashMap.DEFAULT_CACHE_SIZE, null);
+    public FastCacheMap() {
+        this(FastCacheMap.DEFAULT_FOLDER, "TMP" + rnd.nextInt(1000000),
+                FastCacheMap.DEFAULT_CACHE_SIZE, null);
     }
 
     public int size() {
@@ -284,9 +284,9 @@ public class FastHashMap<K, V> implements Map<K, V>, Serializable,  Closeable{
      */
 
     private final class FastMapCollection<V> implements Collection<V> {
-        private FastHashMap map = null;
+        private FastCacheMap map = null;
 
-        public FastMapCollection(FastHashMap map) {
+        public FastMapCollection(FastCacheMap map) {
             this.map = map;
         }
 
@@ -354,9 +354,9 @@ public class FastHashMap<K, V> implements Map<K, V>, Serializable,  Closeable{
     }
 
     private final class FastMapKeySet<K> implements Set<K> {
-        private FastHashMap map = null;
+        private FastCacheMap map = null;
 
-        public FastMapKeySet(FastHashMap map) {
+        public FastMapKeySet(FastCacheMap map) {
             this.map = map;
         }
 
@@ -442,7 +442,7 @@ public class FastHashMap<K, V> implements Map<K, V>, Serializable,  Closeable{
 
         private DBIterator iter = null;
 
-        public KeyIterator(FastHashMap map) {
+        public KeyIterator(FastCacheMap map) {
             this.iter = map.getDb().iterator();
             this.iter.seekToFirst();
         }
@@ -470,7 +470,7 @@ public class FastHashMap<K, V> implements Map<K, V>, Serializable,  Closeable{
         private EntryIterator iterator = null;
         private Map offHeapMap = null;
 
-        public FastMapEntrySet(FastHashMap map) {
+        public FastMapEntrySet(FastCacheMap map) {
             this.iterator = new EntryIterator(map);
             this.offHeapMap = map;
         }
@@ -494,7 +494,7 @@ public class FastHashMap<K, V> implements Map<K, V>, Serializable,  Closeable{
 
         private DBIterator iter = null;
 
-        public EntryIterator(FastHashMap map) {
+        public EntryIterator(FastCacheMap map) {
 
             try {
                 this.iter = map.getDb().iterator();
