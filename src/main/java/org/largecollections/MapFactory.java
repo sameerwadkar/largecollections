@@ -50,10 +50,6 @@ public class MapFactory<K, V> implements Serializable, Closeable {
             this.options = new Options();
             options.cacheSize(cacheSize * 1048576); // x1MB cache
 
-            if (comparatorCls != null) {
-                Class c = Class.forName(comparatorCls);
-                options.comparator((DBComparator) c.newInstance());
-            }
             if (this.fName == null) {
                 this.fName = "TMP" + rnd.nextInt(1000000);
             }
@@ -79,7 +75,13 @@ public class MapFactory<K, V> implements Serializable, Closeable {
         this.createDB();
 
     }
-
+    
+    public MapFactory(String folderName, String name) {
+        this.folder = folderName;
+        this.fName = name;
+        this.createDB();
+    }
+    
     public MapFactory(String folderName, String name, int cacheSize) {
         this.folder = folderName;
         this.fName = name;
@@ -87,14 +89,7 @@ public class MapFactory<K, V> implements Serializable, Closeable {
         this.createDB();
     }
 
-    public MapFactory(String folderName, String name, int cacheSize,
-            String comparatorCls) {
-        this.folder = folderName;
-        this.fName = name;
-        this.cacheSize = cacheSize;
-        this.comparatorCls = comparatorCls;
-        this.createDB();
-    }
+   
 
     public Map<K, V> getMap(String cacheName) {
         if (myMaps.get(cacheName) == null) {
@@ -178,7 +173,10 @@ public class MapFactory<K, V> implements Serializable, Closeable {
             if (key == null) {
                 return null;
             }
-            byte[] vbytes = db.get(Utils.serialize(this.name, key));
+            byte[] keyBytes = Utils.serialize(this.name, key);
+            
+            byte[] vbytes = db.get(keyBytes);
+            
             if (vbytes == null) {
                 return null;
             } else {
@@ -200,13 +198,15 @@ public class MapFactory<K, V> implements Serializable, Closeable {
         }
 
         public V put(K key, V value) {
+            byte[] keyArr = Utils.serialize(this.name, key);
+            byte[] valArr = Utils.serialize(value);
             V v = this.get(key);
             if (v == null) {
-                db.put(Utils.serialize(this.name, key), Utils.serialize(value));
+                db.put(keyArr,valArr);
                 size++;
                 longSize++;
             } else {
-                db.put(Utils.serialize(this.name, key), Utils.serialize(value));
+                db.put(keyArr,valArr);
             }
             return value;
         }
@@ -454,13 +454,11 @@ public class MapFactory<K, V> implements Serializable, Closeable {
 
             @Override
             public Iterator<java.util.Map.Entry<K, V>> iterator() {
-                // TODO Auto-generated method stub
                 return this.iterator;
             }
 
             @Override
             public int size() {
-                // TODO Auto-generated method stub
                 return this.map.size();
             }
 
@@ -567,6 +565,51 @@ public class MapFactory<K, V> implements Serializable, Closeable {
             this.iter.remove();
         }
 
+    }
+    
+    
+    public static void main(String[] args) throws Exception{
+        MapFactory<String,String> mf = new MapFactory("c:/tmp/","test");
+        Map<String,String> mf2 = mf.getMap("test1");
+        for(int i=0;i<5;i++){
+            mf2.put(Integer.toString(i), Integer.toString(i));
+        }
+        
+        Map<String,String> mf3 = mf.getMap("test2");
+        for(int i=5;i<10;i++){
+            mf3.put(Integer.toString(i), Integer.toString(i));
+        }
+        
+        for(int i=0;i<5;i++){
+            System.err.println(mf2.get(Integer.toString(i)));
+            System.err.println(mf3.get(Integer.toString(i)));
+        }
+        
+        
+        for(int i=5;i<10;i++){
+            System.err.println(mf3.get(Integer.toString(i)));
+            System.err.println(mf2.get(Integer.toString(i)));
+        }
+        
+        
+        
+        /*
+        for(int i=200;i<300;i++){
+            System.err.println(mf2.get(Integer.toString(i)));
+        }
+        */
+        
+        /*
+        for(Map.Entry<String, String>me:mf2.entrySet()){
+            System.err.println(me.getKey() +":"+me.getValue());
+        }
+        
+        for(Map.Entry<String, String>me:mf3.entrySet()){
+            System.err.println(me.getKey() +":"+me.getValue());
+        }
+        */
+        mf.close();
+        
     }
 
 }

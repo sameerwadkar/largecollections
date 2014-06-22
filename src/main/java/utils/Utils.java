@@ -86,7 +86,7 @@ public class Utils {
 
             System.arraycopy(nameBArry,0,combined,0         ,nameBArry.length);
             System.arraycopy(bArray,0,combined,nameBArry.length,bArray.length);
-            return b.toByteArray();
+            return combined;
         }
         catch(Exception ex){
             throw new RuntimeException(ex);

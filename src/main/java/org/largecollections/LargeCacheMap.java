@@ -40,8 +40,7 @@ import utils.Utils;
 
 import com.google.common.base.Throwables;
 /**
- * LargeCacheMap is a true implementation of Map. Unlike OffHeapMap which operates about 30% faster on put() and remove() CacheMap returns the
- * correct value for size() function. OffHeapMap provides a heuristic value for size which is compensated by its faster performance.
+ * LargeCacheMap is a true implementation of Map. 
  * 
  * It differs from CacheMap in that it provides a lsize() function which is longer version of size(). In this respect it deviates from a
  * typical Map implementation. In return it allows LargeCacheMap to have size higher than Integer.MAX_VALUE

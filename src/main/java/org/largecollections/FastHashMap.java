@@ -42,7 +42,7 @@ import utils.Utils;
 
 import com.google.common.base.Throwables;
 /**
- * OffHeapMap is an implementation of java.util.Map. OffHeapMap provides a heuristic value for size which is compensated by its 
+ * FastHashMap is an implementation of java.util.Map. FastHashMap provides a heuristic value for size which is compensated by its 
  * faster performance. If you want a true implementation of Map which returns the most accurate value for size() use CacheMap or 
  * LargeCacheMap
  * 

@@ -41,7 +41,7 @@ import utils.Utils;
 import com.google.common.base.Throwables;
 
 /**
- * CacheMap is a true implementation of Map. Unlike OffHeapMap which operates about 30% faster on put() and remove() CacheMap returns the
+ * CacheMap is a true implementation of Map. Unlike FastHashMap which operates about 30% faster on put() and remove() CacheMap returns the
  * correct value for size() function. OffHeapMap provides a heuristic value for size which is compensated by its faster performance.
  * 
  * 
