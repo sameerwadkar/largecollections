@@ -36,13 +36,13 @@ Usage
 By default just use
 
 ```java
-java.util.Map<MyKeyClass,MyValueClass> m = new OffHeapMap<MyKeyClass,MyValueClass>();<br/>
-//Or java.util.Map<MyKeyClass,MyValueClass> m = new CacheMap<MyKeyClass,MyValueClass>();<br/>
-//Or java.util.Map<MyKeyClass,MyValueClass> m = new LargeCacheMap<MyKeyClass,MyValueClass>();<br/>
-//Or java.util.Set<MyClass> m = new CacheSet<MyClass>();<br/>
-//Use like a regular java.util.Map<br/>
+java.util.Map<MyKeyClass,MyValueClass> m = new OffHeapMap<MyKeyClass,MyValueClass>();
+//Or java.util.Map<MyKeyClass,MyValueClass> m = new CacheMap<MyKeyClass,MyValueClass>();
+//Or java.util.Map<MyKeyClass,MyValueClass> m = new LargeCacheMap<MyKeyClass,MyValueClass>();
+//Or java.util.Set<MyClass> m = new CacheSet<MyClass>();
+//Use like a regular java.util.Map
 /*At the end clean up as follows*/
-((java.io.Closeable)m).close()<br/>
+((java.io.Closeable)m).close();
 ```
 Remember all activity with the collections is by-value semantics unlike a typical Java collections which follows by-reference semantics
 with respect to their contents. The reason being, LargeCollections uses LevelDB as its underlying storage. All key/value instances are stored
