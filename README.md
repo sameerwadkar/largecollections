@@ -43,3 +43,11 @@ java.util.Map<MyKeyClass,MyValueClass> m = new OffHeapMap<MyKeyClass,MyValueClas
 //Use like a regular java.util.Map<br/>
 /*At the end clean up as follows*/
 ((java.io.Closeable)m).close()<br/>
+```
+Remember all activity with the collections is by-value semantics unlike a typical Java collections which follows by-reference semantics
+with respect to their contents. The reason being, LargeCollections uses LevelDB as its underlying storage. All key/value instances are stored
+as serialized byte[] arrays. Retrieving them requires deserialization from a byte[] array. Any changes to these instances will not be reflected 
+in the underlying LevelDB storage. Hence if you make changes to these instances after retrieving them from the underlying collection, store it back 
+once you have finished making the changes to ensure that the next retrieval sees the changes made.
+
+
