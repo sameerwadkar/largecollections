@@ -39,7 +39,7 @@ import org.iq80.leveldb.DBIterator;
 import org.iq80.leveldb.Options;
 import org.iq80.leveldb.WriteBatch;
 
-import utils.Utils;
+import utils.DBUtils;
 
 import com.google.common.base.Throwables;
 
@@ -174,7 +174,7 @@ public class MapFactory<K, V> implements Serializable, Closeable {
 
         public boolean containsKey(Object key) {
             // TODO Auto-generated method stub
-            return db.get(Utils.serialize(this.name, key)) != null;
+            return db.get(DBUtils.serialize(this.name, key)) != null;
         }
 
         public boolean containsValue(Object value) {
@@ -188,14 +188,14 @@ public class MapFactory<K, V> implements Serializable, Closeable {
             if (key == null) {
                 return null;
             }
-            byte[] keyBytes = Utils.serialize(this.name, key);
+            byte[] keyBytes = DBUtils.serialize(this.name, key);
             
             byte[] vbytes = db.get(keyBytes);
             
             if (vbytes == null) {
                 return null;
             } else {
-                return (V) Utils.deserialize(vbytes);
+                return (V) DBUtils.deserialize(vbytes);
             }
 
         }
@@ -213,8 +213,8 @@ public class MapFactory<K, V> implements Serializable, Closeable {
         }
 
         public V put(K key, V value) {
-            byte[] keyArr = Utils.serialize(this.name, key);
-            byte[] valArr = Utils.serialize(value);
+            byte[] keyArr = DBUtils.serialize(this.name, key);
+            byte[] valArr = DBUtils.serialize(value);
             V v = this.get(key);
             if (v == null) {
                 db.put(keyArr,valArr);
@@ -229,7 +229,7 @@ public class MapFactory<K, V> implements Serializable, Closeable {
         public V remove(Object key) {
             V v = this.get(key);
             if (v != null) {
-                db.delete(Utils.serialize(this.name, key));
+                db.delete(DBUtils.serialize(this.name, key));
                 size--;
                 longSize--;
             }
@@ -246,8 +246,8 @@ public class MapFactory<K, V> implements Serializable, Closeable {
                         this.size++;
                         this.longSize++;
                     }
-                    batch.put((Utils.serialize(this.name, e.getKey())),
-                            Utils.serialize(e.getValue()));
+                    batch.put((DBUtils.serialize(this.name, e.getKey())),
+                            DBUtils.serialize(e.getValue()));
                     counter++;
                     if (counter % 1000 == 0) {
                         db.write(batch);
@@ -521,8 +521,8 @@ public class MapFactory<K, V> implements Serializable, Closeable {
                 if(this.hasNext()){
                     Entry<byte[], byte[]> entry = this.iter.next();
                     String k = new String(entry.getKey()).replaceAll(this.name+'\0', "");
-                    return new SimpleEntry((K) Utils.deserialize(k.getBytes()),
-                            (V) Utils.deserialize(entry.getValue()));
+                    return new SimpleEntry((K) DBUtils.deserialize(k.getBytes()),
+                            (V) DBUtils.deserialize(entry.getValue()));
                 }
                 throw new NoSuchElementException();
                 
@@ -569,7 +569,7 @@ public class MapFactory<K, V> implements Serializable, Closeable {
             if(this.hasNext()){
                 Entry<byte[], byte[]> entry = this.iter.next();
                 String k = new String(entry.getKey()).replaceAll(this.name+'\0', "");
-                return (K) Utils.deserialize(k.getBytes());
+                return (K) DBUtils.deserialize(k.getBytes());
             }
             throw new NoSuchElementException();
             

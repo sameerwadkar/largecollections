@@ -6,7 +6,7 @@ import java.util.Map.Entry;
 import org.iq80.leveldb.DB;
 import org.iq80.leveldb.DBIterator;
 
-import utils.Utils;
+import utils.DBUtils;
 
 /*
  * Copyright 2014 Sameer Wadkar
@@ -40,7 +40,7 @@ public final class MapKeyIterator<K> implements Iterator<K> {
     public K next() {
         // TODO Auto-generated method stub
         Entry<byte[], byte[]> entry = this.iter.next();
-        return (K) Utils.deserialize(entry.getKey());
+        return (K) DBUtils.deserialize(entry.getKey());
     }
 
     public void remove() {

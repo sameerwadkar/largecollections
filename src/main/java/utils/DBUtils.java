@@ -20,6 +20,8 @@ import static org.fusesource.leveldbjni.JniDBFactory.factory;
 
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
+import java.io.DataInputStream;
+import java.io.DataOutputStream;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
@@ -30,6 +32,8 @@ import java.util.HashMap;
 import java.util.Map;
 
 import org.apache.commons.io.FileUtils;
+import org.apache.commons.io.IOUtils;
+import org.apache.hadoop.io.Writable;
 import org.iq80.leveldb.DB;
 import org.iq80.leveldb.DBComparator;
 import org.iq80.leveldb.Options;
@@ -40,12 +44,11 @@ import org.largecollections.Constants;
 
 import com.google.common.base.Throwables;
 
-public class Utils {
+public class DBUtils {
     public  static void serialize(Object obj,File f) {
         try{
             FileOutputStream fileOut =
                     new FileOutputStream(f);
-            ByteArrayOutputStream b = new ByteArrayOutputStream();
             ObjectOutputStream out = new ObjectOutputStream(fileOut);
             out.writeObject(obj);
             out.close();
@@ -56,6 +59,10 @@ public class Utils {
         }
     }
 
+    
+ 
+
+    
     public  static Object deserialize(File f) {
         try
         {

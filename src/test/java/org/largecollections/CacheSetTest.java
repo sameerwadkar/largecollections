@@ -15,16 +15,10 @@
  */
 package org.largecollections;
 
-import static org.junit.Assert.*;
-import static org.largecollections.TestUtils.*;
-import java.io.File;
-import java.util.Map;
-import java.util.Random;
-import java.util.Set;
+import static org.largecollections.TestUtils.write;
 
 import org.junit.Test;
-
-import utils.Utils;
+import  org.junit.Assert;
 
 public class CacheSetTest {
     
@@ -32,21 +26,26 @@ public class CacheSetTest {
     @Test
     public void testBasic() throws Exception{
         
-        TestUtils.max=1000;
+        TestUtils.max=50000;
+        long ts = System.currentTimeMillis();
         
         CacheSet<String> set = new CacheSet<String>("c:/tmp/",
                 "cacheSet");
 
-        write(set);
+        TestUtils.writeHugeValues(set);
+        System.err.println(System.currentTimeMillis()-ts);
+        /*
         TestUtils.read(set);
-        
+        Assert.assertEquals(TestUtils.max, set.size());
         set.remove(Integer.toString(Integer.MAX_VALUE));
-        System.err.println("Size=" + set.size());
+        Assert.assertEquals(TestUtils.max, set.size());
         set.remove("1");
-        System.err.println("Size=" + set.size());
+        Assert.assertEquals((TestUtils.max-1), set.size());
         set.clear();
-        System.err.println("After Clear Size=" + set.size());
+        Assert.assertEquals(0, set.size());
+        //System.err.println("After Clear Size=" + set.size());
         TestUtils.quickRead(set);//Should not return anything;
+        */
         set.close();
        
     }

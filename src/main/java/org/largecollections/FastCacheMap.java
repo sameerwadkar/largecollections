@@ -38,7 +38,7 @@ import org.iq80.leveldb.Options;
 import org.iq80.leveldb.Range;
 import org.iq80.leveldb.WriteBatch;
 
-import utils.Utils;
+import utils.DBUtils;
 
 import com.google.common.base.Throwables;
 /**
@@ -81,7 +81,7 @@ public class FastCacheMap<K, V> implements Map<K, V>, Serializable,  Closeable,I
             if (cacheSize > 0)
                 this.cacheSize = cacheSize;
             this.dbComparatorCls = comparatorCls;
-            Map m = Utils.createDB(this.folder, this.name, this.cacheSize);
+            Map m = DBUtils.createDB(this.folder, this.name, this.cacheSize);
             this.db = (DB)m.get(Constants.DB_KEY);
             this.options = (Options)m.get(Constants.DB_OPTIONS_KEY);
             this.dbFile = (File) m.get(Constants.DB_FILE_KEY);
@@ -126,7 +126,7 @@ public class FastCacheMap<K, V> implements Map<K, V>, Serializable,  Closeable,I
 
     public boolean containsKey(Object key) {
         // TODO Auto-generated method stub
-        return db.get(Utils.serialize(key)) != null;
+        return db.get(DBUtils.serialize(key)) != null;
     }
 
     public boolean containsValue(Object value) {
@@ -140,12 +140,12 @@ public class FastCacheMap<K, V> implements Map<K, V>, Serializable,  Closeable,I
         if (key == null) {
             return null;
         }
-        byte[] vbytes = db.get(Utils.serialize(key));
+        byte[] vbytes = db.get(DBUtils.serialize(key));
         if(vbytes==null){
             return null;
         }
         else{
-            return (V) Utils.deserialize(vbytes);    
+            return (V) DBUtils.deserialize(vbytes);    
         }
         
     }
@@ -153,13 +153,13 @@ public class FastCacheMap<K, V> implements Map<K, V>, Serializable,  Closeable,I
     public V put(K key, V value) {
         // TODO Auto-generated method stub
         // First check is the entry exists
-        db.put(Utils.serialize(key), Utils.serialize(value));
+        db.put(DBUtils.serialize(key), DBUtils.serialize(value));
         return value;
     }
 
     public V remove(Object key) {
         // TODO Auto-generated method stub
-        db.delete(Utils.serialize(key));
+        db.delete(DBUtils.serialize(key));
         return null;// Just a null to improve performance
     }
 
@@ -168,8 +168,8 @@ public class FastCacheMap<K, V> implements Map<K, V>, Serializable,  Closeable,I
             WriteBatch batch = db.createWriteBatch();
             int counter = 0;
             for (Map.Entry<? extends K, ? extends V> e : m.entrySet()) {
-                batch.put((Utils.serialize(e.getKey())),
-                        Utils.serialize(e.getValue()));
+                batch.put((DBUtils.serialize(e.getKey())),
+                        DBUtils.serialize(e.getValue()));
                 counter++;
                 if (counter % 1000 == 0) {
                     db.write(batch);
@@ -222,7 +222,7 @@ public class FastCacheMap<K, V> implements Map<K, V>, Serializable,  Closeable,I
         this.folder = (String) in.readObject();
         this.name = (String) in.readObject();
         this.cacheSize = in.readInt();
-        Map m = Utils.createDB(this.folder, this.name, this.cacheSize);
+        Map m = DBUtils.createDB(this.folder, this.name, this.cacheSize);
         this.db = (DB)m.get(Constants.DB_KEY);
         this.options = (Options)m.get(Constants.DB_OPTIONS_KEY);
         this.dbFile = (File) m.get(Constants.DB_FILE_KEY);

@@ -21,22 +21,18 @@ import java.io.Closeable;
 import java.io.File;
 import java.io.IOException;
 import java.io.Serializable;
-import java.util.AbstractMap.SimpleEntry;
-import java.util.AbstractSet;
 import java.util.Collection;
-import java.util.Iterator;
 import java.util.Map;
 import java.util.Random;
 import java.util.Set;
 
 import org.apache.commons.lang.StringUtils;
 import org.iq80.leveldb.DB;
-import org.iq80.leveldb.DBComparator;
-import org.iq80.leveldb.DBIterator;
 import org.iq80.leveldb.Options;
 import org.iq80.leveldb.WriteBatch;
 
-import utils.Utils;
+import utils.SerializationUtils;
+import utils.DBUtils;
 
 import com.google.common.base.Throwables;
 
@@ -58,6 +54,7 @@ public class CacheMap<K, V>  implements Map<K,V>,IMap, Serializable, Closeable{
     protected transient File dbFile;
     
 
+    protected transient SerializationUtils<K,V> utils = new SerializationUtils<K,V>();
     
     public CacheMap(String folder, String name, int cacheSize,
             String comparatorCls) {
@@ -71,7 +68,7 @@ public class CacheMap<K, V>  implements Map<K,V>,IMap, Serializable, Closeable{
             }
             if (cacheSize > 0)
                 this.cacheSize = cacheSize;
-            Map m = Utils.createDB(this.folder, this.name, this.cacheSize);
+            Map m = DBUtils.createDB(this.folder, this.name, this.cacheSize);
             this.db = (DB)m.get(Constants.DB_KEY);
             this.options = (Options)m.get(Constants.DB_OPTIONS_KEY);
             this.dbFile = (File) m.get(Constants.DB_FILE_KEY);
@@ -103,7 +100,7 @@ public class CacheMap<K, V>  implements Map<K,V>,IMap, Serializable, Closeable{
 
     public boolean containsKey(Object key) {
         // TODO Auto-generated method stub
-        return db.get(Utils.serialize(key)) != null;
+        return db.get(utils.serializeKey((K)key)) != null;
     }
 
     public boolean containsValue(Object value) {
@@ -117,12 +114,12 @@ public class CacheMap<K, V>  implements Map<K,V>,IMap, Serializable, Closeable{
         if (key == null) {
             return null;
         }
-        byte[] vbytes = db.get(Utils.serialize(key));
+        byte[] vbytes = db.get(utils.serializeKey((K)key));
         if(vbytes==null){
             return null;
         }
         else{
-            return (V) Utils.deserialize(vbytes);    
+            return  utils.deserializeValue(vbytes);    
         }
         
     }
@@ -139,12 +136,12 @@ public class CacheMap<K, V>  implements Map<K,V>,IMap, Serializable, Closeable{
     public V put(K key, V value) {
         V v = this.get(key);
         if(v==null){
-            db.put(Utils.serialize(key), Utils.serialize(value));
+            db.put(utils.serializeKey(key), utils.serializeValue(value));
             size++;
             
         }
         else{
-            db.put(Utils.serialize(key), Utils.serialize(value));
+            db.put(utils.serializeKey(key), utils.serializeValue(value));
         }
         return value;
     }
@@ -152,7 +149,7 @@ public class CacheMap<K, V>  implements Map<K,V>,IMap, Serializable, Closeable{
     public V remove(Object key) {
         V v = this.get(key);
         if(v!=null){
-            db.delete(Utils.serialize(key));
+            db.delete(utils.serializeKey((K)key));
             size--;
             
         }
@@ -169,8 +166,8 @@ public class CacheMap<K, V>  implements Map<K,V>,IMap, Serializable, Closeable{
                     this.size++;
                    
                 }
-                batch.put((Utils.serialize(e.getKey())),
-                        Utils.serialize(e.getValue()));
+                batch.put((utils.serializeKey(e.getKey())),
+                        utils.serializeValue(e.getValue()));
                 counter++;
                 if (counter % 1000 == 0) {
                     db.write(batch);
@@ -201,10 +198,11 @@ public class CacheMap<K, V>  implements Map<K,V>,IMap, Serializable, Closeable{
         this.name = (String) in.readObject();
         this.cacheSize = in.readInt();
         this.size = in.readInt();
-        Map m = Utils.createDB(this.folder, this.name, this.cacheSize);
+        Map m = DBUtils.createDB(this.folder, this.name, this.cacheSize);
         this.db = (DB)m.get(Constants.DB_KEY);
         this.options = (Options)m.get(Constants.DB_OPTIONS_KEY);
         this.dbFile = (File) m.get(Constants.DB_FILE_KEY);
+        this.utils = new SerializationUtils<K,V>();
     }
 
     public void clear() {
@@ -225,7 +223,6 @@ public class CacheMap<K, V>  implements Map<K,V>,IMap, Serializable, Closeable{
     }
 
     public Set<java.util.Map.Entry<K, V>> entrySet() {
-        // Return an Iterator backed by the DB
         return new MapEntrySet<K,V>(this);
     }
 
@@ -237,12 +234,9 @@ public class CacheMap<K, V>  implements Map<K,V>,IMap, Serializable, Closeable{
         catch(Exception ex){
             Throwables.propagate(ex);
         }
-        
     }
 
-
     public DB getDB() {
-        // TODO Auto-generated method stub
         return this.db;
     }
 }

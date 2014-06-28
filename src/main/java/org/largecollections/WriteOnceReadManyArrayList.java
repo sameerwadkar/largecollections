@@ -23,6 +23,8 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.ListIterator;
 import java.util.NoSuchElementException;
+
+import utils.SerializationUtils;
 /**
  * WriteOnceReadManyArrayList is an implementation of java.util.List. It allows you to write
  * once and read many times. An element can be added to the list but cannot be removed.
@@ -32,7 +34,8 @@ public class WriteOnceReadManyArrayList<V> implements List<V>,Serializable,Close
     public  static final long serialVersionUID = 1l;
     protected CacheMap<Integer,V> valueByIndex = null;
     protected CacheMap<V,Integer> indexByValue = null;
-
+    protected transient SerializationUtils<Object,V> sdUtils = new SerializationUtils<Object,V>();
+    
     public WriteOnceReadManyArrayList(){
         valueByIndex = new CacheMap<Integer,V>();
         indexByValue = new CacheMap<V,Integer>();

@@ -24,7 +24,7 @@ import java.util.Set;
 
 import org.junit.Test;
 
-import utils.Utils;
+import utils.DBUtils;
 
 public class LargeCacheMapTest {
     
@@ -55,7 +55,7 @@ public class LargeCacheMapTest {
         //map.close();
          * 
          */
-        Utils.serialize(map,new File("c:/tmp/mymap.ser"));
+        DBUtils.serialize(map,new File("c:/tmp/mymap.ser"));
     }
     
 

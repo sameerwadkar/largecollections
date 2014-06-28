@@ -31,7 +31,7 @@ import org.iq80.leveldb.DB;
 import org.iq80.leveldb.DBIterator;
 import org.iq80.leveldb.Options;
 
-import utils.Utils;
+import utils.DBUtils;
 
 import com.google.common.base.Throwables;
 
@@ -60,7 +60,7 @@ public  class CacheSet<K> implements Set<K>,Closeable {
             }
             if (cacheSize > 0)
                 this.cacheSize = cacheSize;
-            Map m = Utils.createDB(this.folder, this.name, this.cacheSize);
+            Map m = DBUtils.createDB(this.folder, this.name, this.cacheSize);
             this.db = (DB)m.get(Constants.DB_KEY);
             this.options = (Options)m.get(Constants.DB_OPTIONS_KEY);
             this.dbFile = (File) m.get(Constants.DB_FILE_KEY);
@@ -101,7 +101,7 @@ public  class CacheSet<K> implements Set<K>,Closeable {
 
    
     public boolean contains(Object key) {
-        return db.get(Utils.serialize(key)) != null;
+        return db.get(DBUtils.serialize(key)) != null;
     }
 
     public Iterator<K> iterator() {
@@ -117,9 +117,9 @@ public  class CacheSet<K> implements Set<K>,Closeable {
     }
 
     public boolean add(K e) {
-        byte[] v = this.db.get(Utils.serialize(e.toString()));
+        byte[] v = this.db.get(DBUtils.serialize(e.toString()));
         if(v==null){
-            db.put(e.toString().getBytes(), Utils.serialize(e));
+            db.put(e.toString().getBytes(), DBUtils.serialize(e));
             size++;
             return true;
         }
@@ -165,7 +165,7 @@ public  class CacheSet<K> implements Set<K>,Closeable {
             byte[] key =  v.toString().getBytes();
             byte[] bts = this.db.get(key);
             if(bts!=null){
-                K vv = (K)Utils.deserialize(bts);
+                K vv = (K)DBUtils.deserialize(bts);
                 if(!vv.equals(v)){
                     ret=false;
                     break;
@@ -250,7 +250,7 @@ public  class CacheSet<K> implements Set<K>,Closeable {
         this.name = (String) in.readObject();
         this.cacheSize = in.readInt();
         this.size = in.readInt();
-        Map m = Utils.createDB(this.folder, this.name, this.cacheSize);
+        Map m = DBUtils.createDB(this.folder, this.name, this.cacheSize);
         this.db = (DB)m.get(Constants.DB_KEY);
         this.options = (Options)m.get(Constants.DB_OPTIONS_KEY);
         this.dbFile = (File) m.get(Constants.DB_FILE_KEY);

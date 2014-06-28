@@ -19,9 +19,10 @@ import java.util.Collection;
 import java.util.Iterator;
 import java.util.Map;
 
+import utils.SerializationUtils;
+
 public  class MapCollection<V> implements Collection<V> {
     private Map map = null;
-
     protected MapCollection(Map map) {
         this.map = map;
     }

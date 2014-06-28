@@ -6,7 +6,8 @@ import java.util.Map.Entry;
 import org.iq80.leveldb.DB;
 import org.iq80.leveldb.DBIterator;
 
-import utils.Utils;
+import utils.DBUtils;
+import utils.SerializationUtils;
 
 /*
  * Copyright 2014 Sameer Wadkar
@@ -26,25 +27,22 @@ import utils.Utils;
 public final class MapValueIterator<V> implements Iterator<V> {
 
     private DBIterator iter = null;
-
+    protected transient SerializationUtils<Object,V> sdUtils = new SerializationUtils<Object,V>();
     protected MapValueIterator(DB db) {
         this.iter = db.iterator();
         this.iter.seekToFirst();
     }
 
     public boolean hasNext() {
-        // TODO Auto-generated method stub
         return this.iter.hasNext();
     }
 
     public V next() {
-        // TODO Auto-generated method stub
         Entry<byte[], byte[]> entry = this.iter.next();
-        return (V) Utils.deserialize(entry.getValue());
+        return sdUtils.deserializeValue(entry.getValue());
     }
 
     public void remove() {
-        // TODO Auto-generated method stub
         this.iter.remove();
     }
 

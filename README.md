@@ -37,6 +37,8 @@ By default just use
 
 ```java
 java.util.Map<MyKeyClass,MyValueClass> m = new OffHeapMap<MyKeyClass,MyValueClass>();
+
+
 //Or java.util.Map<MyKeyClass,MyValueClass> m = new CacheMap<MyKeyClass,MyValueClass>();
 //Or java.util.Map<MyKeyClass,MyValueClass> m = new LargeCacheMap<MyKeyClass,MyValueClass>();
 //Or java.util.Set<MyClass> m = new CacheSet<MyClass>();

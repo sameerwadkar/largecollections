@@ -90,6 +90,19 @@ public class TestUtils {
                  + (System.currentTimeMillis() - ts));
      }
 
+     static byte[] x = new byte[10000];
+     public static void writeHugeValues(Set<String> set) {
+         long ts = System.currentTimeMillis();
+
+         for (int i = 0; i < max; i++) {
+             set.add(new String(x));
+            
+         }
+
+         System.err.println("Time to insert a  " + max + " rows "
+                 + (System.currentTimeMillis() - ts));
+     }
+   
      public static void readEntrySet(Map<String, String> map) {
         long ts = System.currentTimeMillis();
 

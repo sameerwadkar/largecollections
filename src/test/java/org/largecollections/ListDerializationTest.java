@@ -26,7 +26,7 @@ import java.util.Set;
 
 import org.junit.Test;
 
-import utils.Utils;
+import utils.DBUtils;
 
 public class ListDerializationTest {
     
@@ -35,12 +35,12 @@ public class ListDerializationTest {
     public void test01List() throws Exception{    
         System.setProperty("java.io.tmpdir","c:/tmp");        
         TestUtils.max=1000;        
-        WriteOnceReadManyArrayList<String> l = (WriteOnceReadManyArrayList<String>)Utils.deserialize(new File("c:/tmp/lst.ser"));
+        WriteOnceReadManyArrayList<String> l = (WriteOnceReadManyArrayList<String>)DBUtils.deserialize(new File("c:/tmp/lst.ser"));
         Iterator<String> ls = l.iterator();
         while(ls.hasNext()){
             System.out.println(ls.next());
         }
-        Utils.serialize(l,new File("c:/tmp/lst2.ser"));
+        DBUtils.serialize(l,new File("c:/tmp/lst2.ser"));
         
     }  
 }

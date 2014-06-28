@@ -26,7 +26,7 @@ import java.util.Set;
 
 import org.junit.Test;
 
-import utils.Utils;
+import utils.DBUtils;
 
 public class ListTest {
     
@@ -43,6 +43,6 @@ public class ListTest {
         while(ls.hasNext()){
             System.out.println(ls.next());
         }
-        Utils.serialize(l,new File("c:/tmp/lst.ser"));
+        DBUtils.serialize(l,new File("c:/tmp/lst.ser"));
     }  
 }

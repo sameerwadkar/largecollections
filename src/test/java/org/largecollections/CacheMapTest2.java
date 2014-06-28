@@ -26,7 +26,7 @@ import java.util.Set;
 
 import org.junit.Test;
 
-import utils.Utils;
+import utils.DBUtils;
 
 public class CacheMapTest2 {
     

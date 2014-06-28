@@ -36,7 +36,8 @@ import org.iq80.leveldb.DBIterator;
 import org.iq80.leveldb.Options;
 import org.iq80.leveldb.WriteBatch;
 
-import utils.Utils;
+import utils.DBUtils;
+import utils.SerializationUtils;
 
 import com.google.common.base.Throwables;
 /**
@@ -64,6 +65,7 @@ public class LargeCacheMap<K, V>  implements Map<K,V>, Serializable, Closeable{
     protected transient Options options = null;
     private int size=0;
     private long longSize=0;    
+    protected transient SerializationUtils<K,V> sdUtils = new SerializationUtils<K,V>();
 
     protected  DB createDB(String folderName, String name, int cacheSize,
             String comparatorCls) {
@@ -142,7 +144,7 @@ public class LargeCacheMap<K, V>  implements Map<K,V>, Serializable, Closeable{
 
     public boolean containsKey(Object key) {
         // TODO Auto-generated method stub
-        return db.get(Utils.serialize(key)) != null;
+        return db.get(sdUtils.serializeKey((K)key)) != null;
     }
 
     public boolean containsValue(Object value) {
@@ -156,12 +158,12 @@ public class LargeCacheMap<K, V>  implements Map<K,V>, Serializable, Closeable{
         if (key == null) {
             return null;
         }
-        byte[] vbytes = db.get(Utils.serialize(key));
+        byte[] vbytes = db.get(sdUtils.serializeKey((K)key));
         if(vbytes==null){
             return null;
         }
         else{
-            return (V) Utils.deserialize(vbytes);    
+            return sdUtils.deserializeValue(vbytes);    
         }
         
     }
@@ -181,12 +183,12 @@ public class LargeCacheMap<K, V>  implements Map<K,V>, Serializable, Closeable{
     public V put(K key, V value) {
         V v = this.get(key);
         if(v==null){
-            db.put(Utils.serialize(key), Utils.serialize(value));
+            db.put(sdUtils.serializeKey(key), sdUtils.serializeValue(value));
             size++;
             longSize++;
         }
         else{
-            db.put(Utils.serialize(key), Utils.serialize(value));
+            db.put(sdUtils.serializeKey(key), sdUtils.serializeValue(value));
         }
         return value;
     }
@@ -194,7 +196,7 @@ public class LargeCacheMap<K, V>  implements Map<K,V>, Serializable, Closeable{
     public V remove(Object key) {
         V v = this.get(key);
         if(v!=null){
-            db.delete(Utils.serialize(key));
+            db.delete(sdUtils.serializeKey((K)key));
             size--;
             longSize--;
         }
@@ -211,8 +213,8 @@ public class LargeCacheMap<K, V>  implements Map<K,V>, Serializable, Closeable{
                     this.size++;
                     this.longSize++;
                 }
-                batch.put((Utils.serialize(e.getKey())),
-                        Utils.serialize(e.getValue()));
+                batch.put((sdUtils.serializeKey(e.getKey())),
+                           sdUtils.serializeValue(e.getValue()));
                 counter++;
                 if (counter % 1000 == 0) {
                     db.write(batch);
@@ -247,15 +249,12 @@ public class LargeCacheMap<K, V>  implements Map<K,V>, Serializable, Closeable{
         this.size = in.readInt();
         this.longSize = in.readLong();
         this.createDB();
+        sdUtils = new SerializationUtils<K,V>();
         
     }
 
-    private String getPath() {
-        return this.folder + File.separator + this.name;
-    }
 
-    private boolean recreate = false;
-
+ 
     public void clear() {
         Set<K> keys = this.keySet();
         for(K k:keys){
@@ -270,15 +269,14 @@ public class LargeCacheMap<K, V>  implements Map<K,V>, Serializable, Closeable{
 
 
     public Set<K> keySet() {
-        return new OffHeapSet<K>(this);
+        return new MapKeySet<K>(this);
     }
     public Collection<V> values() {
-        return new OffHeapCollection(this);
+        return new MapCollection<V>(this);
     }
 
     public Set<java.util.Map.Entry<K, V>> entrySet() {
-        // Return an Iterator backed by the DB
-        return new OffHeapEntrySet(this);
+        return new MapEntrySet<K,V>(this);
     }
 
     private DB getDb() {
@@ -287,254 +285,11 @@ public class LargeCacheMap<K, V>  implements Map<K,V>, Serializable, Closeable{
 
 
 
-    /**
-     * @param args
-     */
-
-    private final class OffHeapCollection<V> implements Collection<V> {
-        private LargeCacheMap map = null;
-
-        public OffHeapCollection(LargeCacheMap map) {
-            this.map = map;
-        }
-
-        public int size() {
-            // TODO Auto-generated method stub
-            return this.map.size();
-        }
-
-        public boolean isEmpty() {
-            // TODO Auto-generated method stub
-            return this.map.isEmpty();
-        }
-
-        public boolean contains(Object o) {
-            // TODO Auto-generated method stub
-            return this.map.containsKey(o);
-        }
-
-        public Iterator<V> iterator() {
-            throw new UnsupportedOperationException();
-        }
-
-        public Object[] toArray() {
-            throw new UnsupportedOperationException();
-        }
-
-        public <T> T[] toArray(T[] a) {
-            throw new UnsupportedOperationException();
-        }
-
-        public boolean add(V e) {
-            throw new UnsupportedOperationException();
-        }
-
-        public boolean remove(Object o) {
-            // TODO Auto-generated method stub
-            return (this.map.remove(o) != null);
-        }
-
-        public boolean containsAll(Collection<?> c) {
-            // TODO Auto-generated method stub
-            throw new UnsupportedOperationException();
-        }
-
-        public boolean addAll(Collection<? extends V> c) {
-            // TODO Auto-generated method stub
-            throw new UnsupportedOperationException();
-        }
-
-        public boolean removeAll(Collection<?> c) {
-            // TODO Auto-generated method stub
-            throw new UnsupportedOperationException();
-        }
-
-        public boolean retainAll(Collection<?> c) {
-            // TODO Auto-generated method stub
-            throw new UnsupportedOperationException();
-        }
-
-        public void clear() {
-            // TODO Auto-generated method stub
-            this.map.clear();
-        }
-
-    }
-
-    private final class OffHeapSet<K> implements Set<K> {
-        private LargeCacheMap map = null;
-
-        public OffHeapSet(LargeCacheMap map) {
-            this.map = map;
-        }
-
-        public int size() {
-            // TODO Auto-generated method stub
-            return map.size();
-        }
-
-        public boolean isEmpty() {
-            // TODO Auto-generated method stub
-            return map.isEmpty();
-        }
-
-        public boolean contains(Object o) {
-            // TODO Auto-generated method stub
-            return map.containsKey(o);
-        }
-
-        public Iterator<K> iterator() {
-            // TODO Auto-generated method stub
-            return new KeyIterator<K>(this.map);
-        }
-
-        public Object[] toArray() {
-            // TODO Auto-generated method stub
-            throw new UnsupportedOperationException();
-        }
-
-        public <T> T[] toArray(T[] a) {
-            // TODO Auto-generated method stub
-            throw new UnsupportedOperationException();
-        }
-
-        public boolean add(K e) {
-            // TODO Auto-generated method stub
-            throw new UnsupportedOperationException();
-        }
-
-        public boolean remove(Object o) {
-            // TODO Auto-generated method stub
-            this.map.remove(o);
-            return true;
-        }
-
-        public boolean containsAll(Collection<?> c) {
-            // TODO Auto-generated method stub
-            if (c != null) {
-                for (Object o : c) {
-                    if (this.map.get(o) == null) {
-                        return false;
-                    }
-                }
-            }
-            return true;
-        }
-
-        public boolean addAll(Collection<? extends K> c) {
-            // TODO Auto-generated method stub
-            throw new UnsupportedOperationException();
-        }
-
-        public boolean retainAll(Collection<?> c) {
-            // TODO Auto-generated method stub
-            throw new UnsupportedOperationException();
-        }
-
-        public boolean removeAll(Collection<?> c) {
-            // TODO Auto-generated method stub
-            for (Object o : c) {
-                this.map.remove(o);
-            }
-            return true;
-        }
-
-        public void clear() {
-            // TODO Auto-generated method stub
-            this.map.clear();
-        }
-
-    }
-
-    private final class KeyIterator<K> implements Iterator<K> {
-
-        private DBIterator iter = null;
-
-        public KeyIterator(LargeCacheMap map) {
-            this.iter = map.getDb().iterator();
-            this.iter.seekToFirst();
-        }
-
-        public boolean hasNext() {
-            // TODO Auto-generated method stub
-            return this.iter.hasNext();
-        }
-
-        public K next() {
-            // TODO Auto-generated method stub
-            Entry<byte[], byte[]> entry = this.iter.next();
-            return (K) Utils.deserialize(entry.getKey());
-        }
-
-        public void remove() {
-            // TODO Auto-generated method stub
-            this.iter.remove();
-        }
-
-    }
-
-    private final class OffHeapEntrySet<K, V> extends
-            AbstractSet<Map.Entry<K, V>> {
-        private EntryIterator iterator = null;
-        private Map LargeCacheMap = null;
-
-        public OffHeapEntrySet(LargeCacheMap map) {
-            this.iterator = new EntryIterator(map);
-            this.LargeCacheMap = map;
-        }
-
-        @Override
-        public Iterator<java.util.Map.Entry<K, V>> iterator() {
-            // TODO Auto-generated method stub
-            return this.iterator;
-        }
-
-        @Override
-        public int size() {
-            // TODO Auto-generated method stub
-            return this.LargeCacheMap.size();
-        }
-
-    }
-
-    private final class EntryIterator<K, V> implements
-            Iterator<java.util.Map.Entry<K, V>> {
-
-        private DBIterator iter = null;
-
-        public EntryIterator(LargeCacheMap map) {
-
-            try {
-                this.iter = map.getDb().iterator();
-                //this.iter.close();
-                if(this.iter.hasPrev())
-                    this.iter.seekToLast();
-                this.iter.seekToFirst();
-            } catch (Exception ex) {
-                Throwables.propagate(ex);
-            }
-
-        }
-
-        public boolean hasNext() {
-            // TODO Auto-generated method stub
-            boolean hasNext = iter.hasNext();
-            return hasNext;
-        }
-
-        public java.util.Map.Entry<K, V> next() {
-            // TODO Auto-generated method stub
-            Entry<byte[], byte[]> entry = this.iter.next();
-            return new SimpleEntry<K,V>((K) Utils.deserialize(entry.getKey()),
-                    (V) Utils.deserialize(entry.getValue()));
-        }
-
-        public void remove() {
-            this.iter.remove();
-        }
-
-    }
-
+  
+ 
+ 
+  
+    
 
 
 
