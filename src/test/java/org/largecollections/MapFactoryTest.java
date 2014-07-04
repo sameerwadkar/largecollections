@@ -3,7 +3,9 @@ package org.largecollections;
 import static org.junit.Assert.*;
 
 import java.io.File;
+import java.util.HashMap;
 import java.util.Map;
+import java.util.Set;
 
 import junit.framework.Assert;
 
@@ -36,7 +38,7 @@ public class MapFactoryTest {
         this.factory.close();
     }
     
-    
+   
    @Test
     public void testBasicFunctionality() {
         
@@ -117,5 +119,51 @@ public class MapFactoryTest {
        Assert.assertEquals(4, map22.size());
        
    }
+   @Test
+   public void testPutAll() {
+       Map<String,String> map1 = factory.getMap(name1);
+       
+       Map<String,String> tempMap1 = new HashMap<String,String>();
+       for(int i=0;i<5;i++){
+           tempMap1.put(Integer.toString(i), Integer.toString(i));
+       }  
+       map1.putAll(tempMap1);
+       Assert.assertEquals(5, map1.size());
+   }
+   
+   
+   @Test
+   public void testClear() {
+       Map<String,String> map1 = factory.getMap(name1);
+       
+       Map<String,String> tempMap1 = new HashMap<String,String>();
+       for(int i=0;i<5;i++){
+           tempMap1.put(Integer.toString(i), Integer.toString(i));
+       }  
+       map1.putAll(tempMap1);
+       Assert.assertEquals(5, map1.size());
 
+
+       map1.clear();
+       Assert.assertEquals(0, map1.size());
+   }
+   
+   @Test
+   public void testKeySet() {
+       Map<String,String> map1 = factory.getMap(name1);
+       
+       Map<String,String> tempMap1 = new HashMap<String,String>();
+       for(int i=0;i<5;i++){
+           tempMap1.put(Integer.toString(i), Integer.toString(i));
+       }  
+       map1.putAll(tempMap1);
+       System.err.println(map1.get("4"));
+       Set<String> keys = map1.keySet();
+       for (String k : keys) {
+           System.err.println(k);
+       }
+   }
+   
+
+    
 }

@@ -20,21 +20,14 @@ import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.DataInputStream;
 import java.io.DataOutputStream;
-import java.io.File;
-import java.io.FileInputStream;
-import java.io.FileOutputStream;
 import java.io.IOException;
-import java.io.ObjectInputStream;
-import java.io.ObjectOutputStream;
 import java.io.Serializable;
-import java.lang.reflect.ParameterizedType;
 
-import org.apache.commons.io.IOUtils;
 import org.apache.hadoop.io.Writable;
 
 import com.google.common.base.Throwables;
 
-public class SerializationUtils<K,V>{
+public class SerializationUtils<K,V> implements Serializable{
     private boolean keyTypeVerified = false;
     private boolean valueTypeVerified = false;
 
@@ -46,6 +39,9 @@ public class SerializationUtils<K,V>{
     
     private K key;
     private V value;
+    
+    public static char sep = '\0';
+    public static String sepStr = Character.toString(sep);
     
     /*
     public Class returnedKeyClass() {
@@ -136,7 +132,7 @@ public class SerializationUtils<K,V>{
     }
 
     public K deserializeKey(byte[] bytes) {
-        determineKeyType(key);
+        
         if (this.isKeyWritable) {
             return (K) this.deserializeWritableKey(bytes);
         } 
@@ -214,10 +210,11 @@ public class SerializationUtils<K,V>{
     
     
     public   byte[] serializeKey(String cacheName,K key) {
+        determineKeyType(key);
         byte[] cNameBArry = null;
         byte[] bArray = null;
         try{
-            cNameBArry = (cacheName+'\0').getBytes();
+            cNameBArry = (cacheName+sepStr).getBytes();
             bArray = this.serializeKey(key);
             
             byte[] combined = new byte[cNameBArry.length + bArray.length];
@@ -229,11 +226,39 @@ public class SerializationUtils<K,V>{
             throw new RuntimeException(ex);
         }
     }
+    
+    
+    private void writeObject(java.io.ObjectOutputStream stream)
+            throws IOException {
+        stream.writeBoolean(keyTypeVerified);
+        stream.writeBoolean(valueTypeVerified);
+        stream.writeBoolean(isKeyWritable);
+        stream.writeBoolean(isValueWritable);
+        stream.writeBoolean(isKeyString);
+        stream.writeBoolean(isValueString);
+        stream.writeObject(key);
+        stream.writeObject(value);
+    }
+
+    private void readObject(java.io.ObjectInputStream in) throws IOException,
+            ClassNotFoundException {
+        keyTypeVerified = in.readBoolean();
+        valueTypeVerified = in.readBoolean();
+        isKeyWritable = in.readBoolean();
+        isValueWritable = in.readBoolean();
+        isKeyString = in.readBoolean();
+        isValueString = in.readBoolean();
+        key = (K)in.readObject();
+        value = (V) in.readObject();
+ 
+    }
     public static void main(String[] args){
         SerializationUtils<String,String> x = new SerializationUtils<String,String>();
         x.determineKeyType("");
         
         //System.out.println(x.returnedValueClass());
     }
+    
+    
 
 }
