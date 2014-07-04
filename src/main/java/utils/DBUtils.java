@@ -20,120 +20,26 @@ import static org.fusesource.leveldbjni.JniDBFactory.factory;
 
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
-import java.io.DataInputStream;
-import java.io.DataOutputStream;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
-import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
+import java.io.Serializable;
 import java.util.HashMap;
 import java.util.Map;
 
-import org.apache.commons.io.FileUtils;
-import org.apache.commons.io.IOUtils;
-import org.apache.hadoop.io.Writable;
 import org.iq80.leveldb.DB;
-import org.iq80.leveldb.DBComparator;
 import org.iq80.leveldb.Options;
-
-
-
 import org.largecollections.Constants;
 
 import com.google.common.base.Throwables;
 
 public class DBUtils {
-    public  static void serialize(Object obj,File f) {
-        try{
-            FileOutputStream fileOut =
-                    new FileOutputStream(f);
-            ObjectOutputStream out = new ObjectOutputStream(fileOut);
-            out.writeObject(obj);
-            out.close();
-            fileOut.close();
-        }
-        catch(Exception ex){
-            throw new RuntimeException(ex);
-        }
-    }
+  
 
-    
- 
+   
 
-    
-    public  static Object deserialize(File f) {
-        try
-        {
-           FileInputStream fileIn = new FileInputStream(f);
-           ObjectInputStream in = new ObjectInputStream(fileIn);
-           Object m= (Object) in.readObject();
-           in.close();
-           fileIn.close();
-           return m;
-        }catch(Exception ex)
-        {
-            throw new RuntimeException(ex);
-        }
-    }
-
-    public  static byte[] serialize(Object obj) {
-        try{
-            ByteArrayOutputStream b = new ByteArrayOutputStream();
-            ObjectOutputStream o = new ObjectOutputStream(b);
-            o.writeObject(obj);
-            
-            return b.toByteArray();
-        }
-        catch(Exception ex){
-            throw new RuntimeException(ex);
-        }
-    }
-    
-    public  static byte[] serialize(String cacheName,Object key) {
-        byte[] cNameBArry = null;
-        byte[] bArray = null;
-        try{
-            cNameBArry = (cacheName+'\0').getBytes();
-            if(key instanceof java.lang.String){
-                bArray = ((java.lang.String) key).getBytes();
-            }
-            else if(key instanceof org.largecollections.IMarkerForUniqueToString){
-                bArray = key.toString().getBytes();
-            }
-            else{
-                ByteArrayOutputStream b = new ByteArrayOutputStream();
-                ObjectOutputStream o = new ObjectOutputStream(b);
-                o.writeObject(key);
-                bArray = b.toByteArray();
-            }            
-            byte[] combined = new byte[cNameBArry.length + bArray.length];
-            System.arraycopy(cNameBArry,0,combined,0         ,cNameBArry.length);
-            System.arraycopy(bArray,0,combined,cNameBArry.length,bArray.length);
-            return combined;
-        }
-        catch(Exception ex){
-            throw new RuntimeException(ex);
-        }
-    }
-
-    
-    public static  Object deserialize(byte[] bytes)  {
-        try{
-        ByteArrayInputStream b = new ByteArrayInputStream(bytes);
-        ObjectInputStream o = new ObjectInputStream(b);
-        return o.readObject();
-        }
-        catch(Exception ex){
-            throw new RuntimeException(ex);
-        }
-    }
-    
-    public  static byte[] serialize(byte[] obj) {
-       return obj;
-    }
-    
 
 
     public static int sizeof(Class dataType)
@@ -151,15 +57,6 @@ public class DBUtils {
         return 4; // 32-bit memory pointer... 
                   // (I'm not sure how this works on a 64-bit OS)
     }
-    
-
-    public  static void delete(File f) throws IOException {
-        if (f.isDirectory()) {
-          for (File c : f.listFiles()){
-              FileUtils.deleteQuietly(c);
-          }
-        }
-      }
     
 
     public  static Map createDB(String folder, String name, int cacheSize) {
@@ -193,10 +90,5 @@ public class DBUtils {
 
     }
 
-    
-
-    public void destroyDB(){
-        
-    }
 
 }

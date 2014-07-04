@@ -27,6 +27,7 @@ import java.util.Set;
 import org.junit.Test;
 
 import utils.DBUtils;
+import utils.FileSerDeUtils;
 
 public class ListTest {
     
@@ -43,6 +44,6 @@ public class ListTest {
         while(ls.hasNext()){
             System.out.println(ls.next());
         }
-        DBUtils.serialize(l,new File("c:/tmp/lst.ser"));
+        FileSerDeUtils.serializeToFile(l,new File("c:/tmp/lst.ser"));
     }  
 }

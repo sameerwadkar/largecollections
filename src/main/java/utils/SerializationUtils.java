@@ -34,23 +34,51 @@ import org.apache.hadoop.io.Writable;
 
 import com.google.common.base.Throwables;
 
-public class SerializationUtils<K, V> {
+public class SerializationUtils<K,V>{
     private boolean keyTypeVerified = false;
     private boolean valueTypeVerified = false;
 
     private boolean isKeyWritable;
     private boolean isValueWritable;
+    
+    private boolean isKeyString;
+    private boolean isValueString;
+    
     private K key;
     private V value;
-
+    
+    /*
+    public Class returnedKeyClass() {
+        ParameterizedType parameterizedType = (ParameterizedType)this.getClass()
+                                                    .getGenericSuperclass();
+        System.out.println("TTT"+parameterizedType);
+        System.out.println("TTT"+parameterizedType.getActualTypeArguments()[0]);
+       
+        
+        return (Class) parameterizedType.getActualTypeArguments()[0];
+   }
+    public Class returnedValueClass() {
+        ParameterizedType parameterizedType = (ParameterizedType)getClass()
+                                                    .getGenericSuperclass();
+        return (Class) parameterizedType.getActualTypeArguments()[1];
+   }
+   */
+    public SerializationUtils(){
+    
+    }
    
 
-    private void determineKeyType(K k) {
+    public void determineKeyType(K k) {
+        
         if (!keyTypeVerified) {
             keyTypeVerified = true;
             try {
                 if (k instanceof Writable) {
                     isKeyWritable = true;
+                    key = (K) k.getClass().newInstance();
+                }
+                else if(k instanceof java.lang.String){
+                    isKeyString = true;
                     key = (K) k.getClass().newInstance();
                 }
             } catch (Exception ex) {
@@ -60,12 +88,16 @@ public class SerializationUtils<K, V> {
 
     }
 
-    private void determineValueType(V v) {
+    public void determineValueType(V v) {
         if (!valueTypeVerified) {
             valueTypeVerified = true;
             try {
                 if (v instanceof Writable) {
                     isValueWritable = true;
+                    value = (V) v.getClass().newInstance();
+                }
+                else if(v instanceof java.lang.String){
+                    isValueString = true;
                     value = (V) v.getClass().newInstance();
                 }
             } catch (Exception ex) {
@@ -80,7 +112,11 @@ public class SerializationUtils<K, V> {
         determineKeyType(key);
         if (this.isKeyWritable) {
             return this.serializeWritable((Writable) key);
-        } else {
+        } 
+        else if(this.isKeyString){
+            return ((String)key).getBytes();
+        }
+        else {
             return org.apache.commons.lang.SerializationUtils.serialize((java.io.Serializable)key);
         }
 
@@ -90,7 +126,11 @@ public class SerializationUtils<K, V> {
         determineValueType(value);
         if (this.isValueWritable) {
             return this.serializeWritable((Writable) value);
-        } else {
+        } 
+        else if(this.isValueString){
+            return ((String)value).getBytes();
+        }
+        else {
             return org.apache.commons.lang.SerializationUtils.serialize((java.io.Serializable)value);
         }
     }
@@ -99,7 +139,11 @@ public class SerializationUtils<K, V> {
         determineKeyType(key);
         if (this.isKeyWritable) {
             return (K) this.deserializeWritableKey(bytes);
-        } else {
+        } 
+        else if(this.isKeyString){
+            return (K) new String(bytes);
+        }
+        else {
             return (K)org.apache.commons.lang.SerializationUtils.deserialize(bytes);
         }
 
@@ -109,7 +153,11 @@ public class SerializationUtils<K, V> {
         determineValueType(value);
         if (this.isValueWritable) {
             return (V) this.deserializeWritableValue(bytes);
-        } else {
+        } 
+        else if(this.isValueString){
+            return (V) new String(bytes);
+        }
+        else {
             return (V)org.apache.commons.lang.SerializationUtils.deserialize(bytes);
         }
     }
@@ -162,6 +210,30 @@ public class SerializationUtils<K, V> {
             throw Throwables.propagate(ex);
         }
 
+    }
+    
+    
+    public   byte[] serializeKey(String cacheName,K key) {
+        byte[] cNameBArry = null;
+        byte[] bArray = null;
+        try{
+            cNameBArry = (cacheName+'\0').getBytes();
+            bArray = this.serializeKey(key);
+            
+            byte[] combined = new byte[cNameBArry.length + bArray.length];
+            System.arraycopy(cNameBArry,0,combined,0         ,cNameBArry.length);
+            System.arraycopy(bArray,0,combined,cNameBArry.length,bArray.length);
+            return combined;
+        }
+        catch(Exception ex){
+            throw new RuntimeException(ex);
+        }
+    }
+    public static void main(String[] args){
+        SerializationUtils<String,String> x = new SerializationUtils<String,String>();
+        x.determineKeyType("");
+        
+        //System.out.println(x.returnedValueClass());
     }
 
 }

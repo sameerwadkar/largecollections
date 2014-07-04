@@ -25,6 +25,7 @@ import java.util.Set;
 import org.junit.Test;
 
 import utils.DBUtils;
+import utils.FileSerDeUtils;
 
 public class CacheMapTest {
     
@@ -50,7 +51,7 @@ public class CacheMapTest {
         map.put("1","1");
         System.err.println("Size=" + map.size());
         //map.close();
-        DBUtils.serialize(map,new File("c:/tmp/mymap.ser"));
+        FileSerDeUtils.serializeToFile(map,new File("c:/tmp/mymap.ser"));
     }
     
 

@@ -26,13 +26,14 @@ import java.util.Set;
 import org.junit.Test;
 
 import utils.DBUtils;
+import utils.FileSerDeUtils;
 
 public class CacheMapDerializationTest {
     
     
     @Test
     public void test01DeSerializeMap() throws Exception{    
-        Map<String,String>map = (Map<String, String>) DBUtils.deserialize(new File("c:/tmp/mymap.ser"));
+        Map<String,String>map = (Map<String, String>) FileSerDeUtils.deserializeFromFile(new File("c:/tmp/mymap.ser"));
         System.out.println("Deserialize=" + map.size());
         read(map);
         readKeySet(map);

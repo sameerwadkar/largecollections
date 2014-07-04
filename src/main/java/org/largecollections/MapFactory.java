@@ -21,25 +21,25 @@ import java.io.Closeable;
 import java.io.File;
 import java.io.IOException;
 import java.io.Serializable;
+import java.util.AbstractMap.SimpleEntry;
 import java.util.AbstractSet;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Map;
+import java.util.Map.Entry;
 import java.util.NoSuchElementException;
 import java.util.Random;
 import java.util.Set;
-import java.util.AbstractMap.SimpleEntry;
-import java.util.Map.Entry;
 
 import org.apache.commons.lang.StringUtils;
 import org.iq80.leveldb.DB;
-import org.iq80.leveldb.DBComparator;
 import org.iq80.leveldb.DBIterator;
 import org.iq80.leveldb.Options;
 import org.iq80.leveldb.WriteBatch;
 
 import utils.DBUtils;
+import utils.SerializationUtils;
 
 import com.google.common.base.Throwables;
 
@@ -56,8 +56,9 @@ public class MapFactory<K, V> implements Serializable, Closeable {
     protected transient File dbFile;
     
     private Map<String, Map<K, V>> myMaps = new HashMap<String, Map<K, V>>();
+    
+    
     public MapFactory() {
-        // Initialize DB
         this(Constants.DEFAULT_FOLDER, "TMP" + rnd.nextInt(1000000),
                 Constants.DEFAULT_CACHE_SIZE);
 
@@ -140,7 +141,7 @@ public class MapFactory<K, V> implements Serializable, Closeable {
         protected String cacheName = null;
         private transient DB db;
         protected int size = 0;
-
+        protected transient SerializationUtils<K,V> serdeUtils = new SerializationUtils<K,V>();
         public InnerMap(String cacheName, DB db) {
             this.cacheName = cacheName;
             this.db = db;
@@ -164,7 +165,7 @@ public class MapFactory<K, V> implements Serializable, Closeable {
 
         public boolean containsKey(Object key) {
             
-            return db.get(DBUtils.serialize(this.cacheName, key)) != null;
+            return db.get(serdeUtils.serializeKey(this.cacheName, (K)key)) != null;
         }
 
         public boolean containsValue(Object value) {
@@ -173,19 +174,20 @@ public class MapFactory<K, V> implements Serializable, Closeable {
 
         }
 
+       
         public V get(Object key) {
             
             if (key == null) {
                 return null;
             }
-            byte[] keyBytes = DBUtils.serialize(this.cacheName, key);
+            byte[] keyBytes = serdeUtils.serializeKey(this.cacheName,(K) key);
             
             byte[] vbytes = db.get(keyBytes);
             
             if (vbytes == null) {
                 return null;
             } else {
-                return (V) DBUtils.deserialize(vbytes);
+                return (V) serdeUtils.deserializeValue(vbytes);
             }
 
         }
@@ -200,8 +202,8 @@ public class MapFactory<K, V> implements Serializable, Closeable {
         }
 
         public V put(K key, V value) {
-            byte[] keyArr = DBUtils.serialize(this.cacheName, key);
-            byte[] valArr = DBUtils.serialize(value);
+            byte[] keyArr = serdeUtils.serializeKey(this.cacheName, key);
+            byte[] valArr = serdeUtils.serializeValue(value);
             if(!this.containsKey(key)){
                 size++;
             }
@@ -212,7 +214,7 @@ public class MapFactory<K, V> implements Serializable, Closeable {
         public V remove(Object key) {
             V v = this.get(key);
             if (v != null) {
-                db.delete(DBUtils.serialize(this.cacheName, key));
+                db.delete(serdeUtils.serializeKey(this.cacheName,(K) key));
                 size--;
             }
             return v;
@@ -227,8 +229,8 @@ public class MapFactory<K, V> implements Serializable, Closeable {
                     if (v == null) {
                         this.size++;
                     }
-                    batch.put((DBUtils.serialize(this.cacheName, e.getKey())),
-                            DBUtils.serialize(e.getValue()));
+                    batch.put((serdeUtils.serializeKey(this.cacheName,(K)e.getKey())),
+                            serdeUtils.serializeValue(e.getValue()));
                     counter++;
                     if (counter % 1000 == 0) {//Write every 1000 batches.
                         db.write(batch);
@@ -254,6 +256,7 @@ public class MapFactory<K, V> implements Serializable, Closeable {
                 throws IOException, ClassNotFoundException {
             this.cacheName = (String) in.readObject();
             this.size = in.readInt();
+            this.serdeUtils = new SerializationUtils<K, V>();
         }
 
         public void clear() {
@@ -500,8 +503,8 @@ public class MapFactory<K, V> implements Serializable, Closeable {
                 if(this.hasNext()){
                     Entry<byte[], byte[]> entry = this.iter.next();
                     String k = new String(entry.getKey()).replaceAll(this.name+'\0', "");
-                    return new SimpleEntry((K) DBUtils.deserialize(k.getBytes()),
-                            (V) DBUtils.deserialize(entry.getValue()));
+                    return new SimpleEntry((K) serdeUtils.deserializeKey(k.getBytes()),
+                            (V) serdeUtils.deserializeValue(entry.getValue()));
                 }
                 throw new NoSuchElementException();
                 
@@ -519,7 +522,7 @@ public class MapFactory<K, V> implements Serializable, Closeable {
 
         private DBIterator iter = null;
         private String name = null;
-
+        protected transient SerializationUtils<K,V> serdeUtils = new SerializationUtils<K,V>();
         public MyKeyIterator(DB db,String name) {
             this.iter =db.iterator();
             this.iter.seekToFirst();
@@ -548,7 +551,7 @@ public class MapFactory<K, V> implements Serializable, Closeable {
             if(this.hasNext()){
                 Entry<byte[], byte[]> entry = this.iter.next();
                 String k = new String(entry.getKey()).replaceAll(this.name+'\0', "");
-                return (K) DBUtils.deserialize(k.getBytes());
+                return (K) serdeUtils.deserializeKey(k.getBytes());
             }
             throw new NoSuchElementException();
             
@@ -585,23 +588,7 @@ public class MapFactory<K, V> implements Serializable, Closeable {
             System.err.println("Map 2 Access: "+ map2.get(Integer.toString(i)));
         }
         
-        
-        
-        /*
-        for(int i=200;i<300;i++){
-            System.err.println(mf2.get(Integer.toString(i)));
-        }
-        */
-        
-        /*
-        for(Map.Entry<String, String>me:mf2.entrySet()){
-            System.err.println(me.getKey() +":"+me.getValue());
-        }
-        
-        for(Map.Entry<String, String>me:mf3.entrySet()){
-            System.err.println(me.getKey() +":"+me.getValue());
-        }
-        */
+
         factory.close();
         
     }

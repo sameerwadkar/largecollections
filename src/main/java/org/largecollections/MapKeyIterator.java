@@ -7,6 +7,7 @@ import org.iq80.leveldb.DB;
 import org.iq80.leveldb.DBIterator;
 
 import utils.DBUtils;
+import utils.SerializationUtils;
 
 /*
  * Copyright 2014 Sameer Wadkar
@@ -26,7 +27,7 @@ import utils.DBUtils;
 public final class MapKeyIterator<K> implements Iterator<K> {
 
     private DBIterator iter = null;
-
+    protected transient SerializationUtils<K,? extends Object> serdeUtils = new SerializationUtils<K,Object>();
     protected MapKeyIterator(DB db) {
         this.iter =db.iterator();
         this.iter.seekToFirst();
@@ -40,7 +41,7 @@ public final class MapKeyIterator<K> implements Iterator<K> {
     public K next() {
         // TODO Auto-generated method stub
         Entry<byte[], byte[]> entry = this.iter.next();
-        return (K) DBUtils.deserialize(entry.getKey());
+        return (K) serdeUtils.deserializeKey(entry.getKey());
     }
 
     public void remove() {

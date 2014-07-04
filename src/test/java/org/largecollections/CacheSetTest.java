@@ -26,15 +26,15 @@ public class CacheSetTest {
     @Test
     public void testBasic() throws Exception{
         
-        TestUtils.max=50000;
+        TestUtils.max=50;
         long ts = System.currentTimeMillis();
         
         CacheSet<String> set = new CacheSet<String>("c:/tmp/",
                 "cacheSet");
 
-        TestUtils.writeHugeValues(set);
+        TestUtils.write(set);
         System.err.println(System.currentTimeMillis()-ts);
-        /*
+        
         TestUtils.read(set);
         Assert.assertEquals(TestUtils.max, set.size());
         set.remove(Integer.toString(Integer.MAX_VALUE));
@@ -45,7 +45,7 @@ public class CacheSetTest {
         Assert.assertEquals(0, set.size());
         //System.err.println("After Clear Size=" + set.size());
         TestUtils.quickRead(set);//Should not return anything;
-        */
+        
         set.close();
        
     }

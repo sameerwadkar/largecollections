@@ -22,23 +22,19 @@ import java.io.Closeable;
 import java.io.File;
 import java.io.IOException;
 import java.io.Serializable;
-import java.util.AbstractMap.SimpleEntry;
-import java.util.AbstractSet;
 import java.util.Collection;
-import java.util.Iterator;
 import java.util.Map;
 import java.util.Random;
 import java.util.Set;
 
 import org.apache.commons.lang.StringUtils;
 import org.iq80.leveldb.DB;
-import org.iq80.leveldb.DBComparator;
-import org.iq80.leveldb.DBIterator;
 import org.iq80.leveldb.Options;
 import org.iq80.leveldb.Range;
 import org.iq80.leveldb.WriteBatch;
 
 import utils.DBUtils;
+import utils.SerializationUtils;
 
 import com.google.common.base.Throwables;
 /**
@@ -66,7 +62,7 @@ public class FastCacheMap<K, V> implements Map<K, V>, Serializable,  Closeable{
     protected transient File dbFile = null;
     protected transient Options options = null;
 
-    
+    protected transient SerializationUtils<K,V> serdeUtils = new SerializationUtils<K,V>();
     
     public FastCacheMap(String folder, String name, int cacheSize,
             String comparatorCls) {
@@ -126,7 +122,7 @@ public class FastCacheMap<K, V> implements Map<K, V>, Serializable,  Closeable{
 
     public boolean containsKey(Object key) {
         // TODO Auto-generated method stub
-        return db.get(DBUtils.serialize(key)) != null;
+        return db.get(serdeUtils.serializeKey((K)key)) != null;
     }
 
     public boolean containsValue(Object value) {
@@ -136,30 +132,26 @@ public class FastCacheMap<K, V> implements Map<K, V>, Serializable,  Closeable{
     }
 
     public V get(Object key) {
-        // TODO Auto-generated method stub
         if (key == null) {
             return null;
         }
-        byte[] vbytes = db.get(DBUtils.serialize(key));
+        byte[] vbytes = db.get(serdeUtils.serializeKey((K)key));
         if(vbytes==null){
             return null;
         }
         else{
-            return (V) DBUtils.deserialize(vbytes);    
+            return (V) serdeUtils.deserializeValue(vbytes);    
         }
         
     }
 
     public V put(K key, V value) {
-        // TODO Auto-generated method stub
-        // First check is the entry exists
-        db.put(DBUtils.serialize(key), DBUtils.serialize(value));
+        db.put(serdeUtils.serializeKey(key), serdeUtils.serializeValue(value));
         return value;
     }
 
     public V remove(Object key) {
-        // TODO Auto-generated method stub
-        db.delete(DBUtils.serialize(key));
+        db.delete(serdeUtils.serializeKey((K)key));
         return null;// Just a null to improve performance
     }
 
@@ -168,8 +160,8 @@ public class FastCacheMap<K, V> implements Map<K, V>, Serializable,  Closeable{
             WriteBatch batch = db.createWriteBatch();
             int counter = 0;
             for (Map.Entry<? extends K, ? extends V> e : m.entrySet()) {
-                batch.put((DBUtils.serialize(e.getKey())),
-                        DBUtils.serialize(e.getValue()));
+                batch.put((serdeUtils.serializeKey(e.getKey())),
+                        serdeUtils.serializeValue(e.getValue()));
                 counter++;
                 if (counter % 1000 == 0) {
                     db.write(batch);
@@ -189,23 +181,17 @@ public class FastCacheMap<K, V> implements Map<K, V>, Serializable,  Closeable{
         for(K k:keys){
             this.remove(k);
         }
-        
-
     }
-
-   
-
-
 
     public Set<K> keySet() {
         return new MapKeySet<K>(this);
     }
+
     public Collection<V> values() {
         return new MapCollection<V>(this);
     }
 
     public Set<java.util.Map.Entry<K, V>> entrySet() {
-        // Return an Iterator backed by the DB
         return new MapEntrySet<K,V>(this);
     }
 
@@ -226,6 +212,7 @@ public class FastCacheMap<K, V> implements Map<K, V>, Serializable,  Closeable{
         this.db = (DB)m.get(Constants.DB_KEY);
         this.options = (Options)m.get(Constants.DB_OPTIONS_KEY);
         this.dbFile = (File) m.get(Constants.DB_FILE_KEY);
+        serdeUtils = new SerializationUtils<K,V>();
     }
     public void close() throws IOException {
         try{
@@ -237,12 +224,7 @@ public class FastCacheMap<K, V> implements Map<K, V>, Serializable,  Closeable{
         }
         
     }
-    /**
-     * @param args
-     */
-
-  
-   
+ 
     public DB getDB() {
         return db;
     }

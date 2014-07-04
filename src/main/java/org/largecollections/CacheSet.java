@@ -20,11 +20,14 @@ import static org.fusesource.leveldbjni.JniDBFactory.factory;
 import java.io.Closeable;
 import java.io.File;
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Iterator;
+import java.util.List;
 import java.util.Map;
 import java.util.Random;
 import java.util.Set;
+import java.util.Map.Entry;
 
 import org.apache.commons.lang.StringUtils;
 import org.iq80.leveldb.DB;
@@ -32,10 +35,11 @@ import org.iq80.leveldb.DBIterator;
 import org.iq80.leveldb.Options;
 
 import utils.DBUtils;
+import utils.SerializationUtils;
 
 import com.google.common.base.Throwables;
 
-public  class CacheSet<K> implements Set<K>,Closeable {
+public  class CacheSet<K> implements Set<K>,Closeable,IDb {
     public  static final long serialVersionUID = 10l;
     private final static Random rnd = new Random();
     
@@ -47,6 +51,7 @@ public  class CacheSet<K> implements Set<K>,Closeable {
     protected transient DB db;
     protected transient Options options;
     protected transient File dbFile;
+    protected transient SerializationUtils<Integer,List<? extends K>> serdeUtils = new SerializationUtils<Integer,List<? extends K>>();
     
     public CacheSet(String folder, String name, int cacheSize,
             String comparatorCls) {
@@ -99,13 +104,33 @@ public  class CacheSet<K> implements Set<K>,Closeable {
         return (this.size==0);
     }
 
-   
+
+    private List<K> getListByHashCode(int hashCode){
+        byte[] listBytes = db.get(serdeUtils.serializeKey(hashCode));
+        List<K> vals = null;
+        if(listBytes!=null){
+            vals = (List<K>) serdeUtils.deserializeValue(listBytes);
+        }
+        return vals;
+    }
     public boolean contains(Object key) {
-        return db.get(DBUtils.serialize(key)) != null;
+        List<K> vals = getListByHashCode(key.hashCode());
+        if(vals!=null && vals.size()>0){
+            for(Object v:vals){
+                if(v.equals(key)){
+                    return true;
+                }
+            }
+        }
+        else{
+            return false;
+        }
+        return false;
     }
 
+    //@TODO - The Iterators need to reflect this change
     public Iterator<K> iterator() {
-        return new MapValueIterator<K>(this.db);
+        return new SetValueIterator<K>(this);
     }
 
     public Object[] toArray() {
@@ -116,62 +141,82 @@ public  class CacheSet<K> implements Set<K>,Closeable {
         throw new UnsupportedOperationException();
     }
 
+    
     public boolean add(K e) {
-        byte[] v = this.db.get(DBUtils.serialize(e.toString()));
-        if(v==null){
-            db.put(e.toString().getBytes(), DBUtils.serialize(e));
-            size++;
-            return true;
+        List<K> vals = getListByHashCode(e.hashCode());
+        boolean contains = false;
+        if(vals!=null && vals.size()>0){
+            for(Object v:vals){
+                if(v.equals(e)){
+                    contains = true;
+                }
+            }
         }
-        return false;
+        if(vals==null){
+            vals=new ArrayList<K>();
+        }
+        if(!contains){
+            vals.add(e);            
+            size++;            
+        }
+        else{
+           //Replace e
+           vals.remove(e);
+           vals.add(e);
+        }
+        db.put(serdeUtils.serializeKey(e.hashCode()),serdeUtils.serializeValue(vals));
+        return !contains;
     }
 
     
     public boolean remove(Object e) {
-        byte[] v = this.db.get(e.toString().getBytes());
-        if(v!=null){
-            this.delete(e.toString());
-            return true;
+        List<K> vals = getListByHashCode(e.hashCode());
+        if(vals==null){
+            return false; //nothing to do
         }
+        else{
+            boolean found = false;
+            for(K v:vals){
+                if(v.equals(e)){
+                    found = true;
+                    break;
+                }
+            }
+            if(found){
+                vals.remove(e);
+                this.size--;   
+                if(vals.size()==0){
+                    this.db.delete(serdeUtils.serializeKey(e.hashCode()));
+                }
+                else{
+                    db.put(serdeUtils.serializeKey(e.hashCode()),serdeUtils.serializeValue(vals));
+                }
+            }
+            return found;
+        }        
         
-        return false;
     }
 
-    private void delete(String s){
-        db.delete(s.getBytes());
-        size--;
-    }
-  
+
   
     public void clear() {
         //Get all keys and delete all
         DBIterator iter = this.db.iterator();
         iter.seekToFirst();
         while(iter.hasNext()){
-            String k = new String(iter.next().getKey());
-            this.delete(k);
+            byte[] key = iter.next().getKey();
+            this.db.delete(key);
             
-            //iter.remove();
-            //this.size--;
-            System.err.println("current size"+size);
         }
+        this.size=0;
     }
 
     public boolean containsAll(Collection<?> c) {
         boolean ret = true;
-        Iterator i = c.iterator();
+        Iterator<? extends K> i = (Iterator<? extends K>)c.iterator();
         while(i.hasNext()){
-            K v= (K) i.next();
-            byte[] key =  v.toString().getBytes();
-            byte[] bts = this.db.get(key);
-            if(bts!=null){
-                K vv = (K)DBUtils.deserialize(bts);
-                if(!vv.equals(v)){
-                    ret=false;
-                    break;
-                }
-            }
-            else{
+            K v= i.next();
+            if(!this.contains(v)){
                 ret=false;
                 break;
             }
@@ -181,7 +226,7 @@ public  class CacheSet<K> implements Set<K>,Closeable {
 
 
     public boolean addAll(Collection<? extends K> c) {
-        Iterator i = c.iterator();
+        Iterator<? extends K> i = c.iterator();
         int stSize = this.size;
         while(i.hasNext()){
             K k = (K)i.next();
@@ -198,10 +243,9 @@ public  class CacheSet<K> implements Set<K>,Closeable {
 
     public boolean retainAll(Collection<?> c) {
         boolean changed = false;
-        Iterator i = c.iterator();
-        int stSize = this.size;
+        Iterator<? extends K> i = (Iterator<? extends K>)c.iterator();
         while(i.hasNext()){
-            K k = (K)i.next();
+            K k = i.next();
             if(!this.contains(k)){
                 this.remove(k);
                 changed=true;
@@ -212,10 +256,9 @@ public  class CacheSet<K> implements Set<K>,Closeable {
 
     public boolean removeAll(Collection<?> c) {
         boolean changed = false;
-        Iterator i = c.iterator();
-        int stSize = this.size;
+        Iterator<? extends K> i = (Iterator<? extends K>)c.iterator();
         while(i.hasNext()){
-            K k = (K)i.next();
+            K k = i.next();
             if(this.contains(k)){
                 this.remove(k);
                 changed=true;
@@ -254,6 +297,69 @@ public  class CacheSet<K> implements Set<K>,Closeable {
         this.db = (DB)m.get(Constants.DB_KEY);
         this.options = (Options)m.get(Constants.DB_OPTIONS_KEY);
         this.dbFile = (File) m.get(Constants.DB_FILE_KEY);
+    }
+    
+    private final class SetValueIterator<K> implements Iterator<K> {
+        private CacheSet<K> cacheSet = null;
+        private DBIterator iter = null;
+        private DB db = null;
+        protected transient SerializationUtils<Integer,List<K>> sdUtils = new SerializationUtils<Integer,List<K>>();
+        
+        Iterator<K> currentListIterator = null;
+        boolean containsValues =  false;
+        
+        private  Iterator<K>  getListIterator(byte[] value){
+            List<K> currentList = sdUtils.deserializeValue(value);
+            return currentList.iterator();
+        }
+        
+        private void initializeNext(){
+            if(this.iter.hasNext()){
+                containsValues=true;
+                Entry<byte[], byte[]> entry = this.iter.next();
+                Iterator<K>currentListIterator = getListIterator(entry.getValue());
+            }
+        }
+        protected SetValueIterator(CacheSet set) {
+            this.cacheSet = set;
+            this.db = ((IDb)set).getDB();
+            this.iter = db.iterator();
+            this.iter.seekToFirst();
+
+        }
+
+        public boolean hasNext() {
+            if(!containsValues){
+                return false;
+            }
+            else{
+                if(currentListIterator.hasNext()){
+                    return currentListIterator.hasNext();
+                }
+                else{
+                    this.initializeNext();
+                    return currentListIterator.hasNext();
+                }
+            }
+        }
+
+        public K next() {
+            return currentListIterator.next();     
+        }
+
+        public void remove() {
+            K k = this.currentListIterator.next();
+            this.cacheSet.remove(k);
+            //this.currentListIterator.prev();
+            //No need to go back. The iterator of the List has already moved forward. 
+            //Only way to recreate it is to fetch back from this.db and which will return a fresh updated list
+        }
+
+    }
+
+    public DB getDB() {
+        // TODO Auto-generated method stub
+        return this.db;
     }
 
 }
