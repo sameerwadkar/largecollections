@@ -14,10 +14,13 @@
  * limitations under the License.
  */
 package org.largecollections;
+import java.io.Closeable;
+import java.io.IOException;
+import java.io.Serializable;
+
 import org.iq80.leveldb.DB;
-public interface IMap {
+public interface IDb {
 
     public DB getDB();
-    
 
 }

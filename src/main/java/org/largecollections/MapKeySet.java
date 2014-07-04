@@ -27,7 +27,7 @@ public  class MapKeySet<K> implements Set<K> {
     private DB db = null;
     protected MapKeySet(Map<K,?> map) {
         this.map = map;
-        this.db = ((IMap)this.map).getDB();
+        this.db = ((IDb)this.map).getDB();
     }
 
     public int size() {

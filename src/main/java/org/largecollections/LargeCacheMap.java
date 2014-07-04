@@ -259,8 +259,7 @@ public class LargeCacheMap<K, V>  implements Map<K,V>, Serializable, Closeable{
         Set<K> keys = this.keySet();
         for(K k:keys){
             this.remove(k);
-        }
-        
+        }      
 
     }
 

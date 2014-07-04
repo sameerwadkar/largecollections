@@ -91,17 +91,26 @@ public class DBUtils {
         }
     }
     
-    public  static byte[] serialize(String cacheName,Object obj) {
+    public  static byte[] serialize(String cacheName,Object key) {
+        byte[] cNameBArry = null;
+        byte[] bArray = null;
         try{
-            byte[] nameBArry = (cacheName+'\0').getBytes();
-            ByteArrayOutputStream b = new ByteArrayOutputStream();
-            ObjectOutputStream o = new ObjectOutputStream(b);
-            o.writeObject(obj);
-            byte[] bArray = b.toByteArray();
-            byte[] combined = new byte[nameBArry.length + bArray.length];
-
-            System.arraycopy(nameBArry,0,combined,0         ,nameBArry.length);
-            System.arraycopy(bArray,0,combined,nameBArry.length,bArray.length);
+            cNameBArry = (cacheName+'\0').getBytes();
+            if(key instanceof java.lang.String){
+                bArray = ((java.lang.String) key).getBytes();
+            }
+            else if(key instanceof org.largecollections.IMarkerForUniqueToString){
+                bArray = key.toString().getBytes();
+            }
+            else{
+                ByteArrayOutputStream b = new ByteArrayOutputStream();
+                ObjectOutputStream o = new ObjectOutputStream(b);
+                o.writeObject(key);
+                bArray = b.toByteArray();
+            }            
+            byte[] combined = new byte[cNameBArry.length + bArray.length];
+            System.arraycopy(cNameBArry,0,combined,0         ,cNameBArry.length);
+            System.arraycopy(bArray,0,combined,cNameBArry.length,bArray.length);
             return combined;
         }
         catch(Exception ex){
@@ -146,17 +155,14 @@ public class DBUtils {
 
     public  static void delete(File f) throws IOException {
         if (f.isDirectory()) {
-            System.err.println("DD");
           for (File c : f.listFiles()){
-              System.err.println("DD="+c.getAbsolutePath());
               FileUtils.deleteQuietly(c);
-              System.err.println("Deleted="+c.getAbsolutePath());
           }
         }
       }
     
 
-    public  static Map createDB(String Options, String name, int cacheSize) {
+    public  static Map createDB(String folder, String name, int cacheSize) {
         //System.setProperty("java.io.timedir", folderName);
         DB db=null;
         Options options = null;
@@ -168,7 +174,7 @@ public class DBUtils {
             
 
             ///this.dbFile = File.createTempFile(name, null);
-            dbFile = new File(Options+File.separator+name);
+            dbFile = new File(folder+File.separator+name);
             if(!dbFile.exists()){
                 dbFile.mkdirs();
             }
@@ -186,7 +192,9 @@ public class DBUtils {
         return m;
 
     }
+
     
+
     public void destroyDB(){
         
     }

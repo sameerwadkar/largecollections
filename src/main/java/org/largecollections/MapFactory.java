@@ -44,64 +44,49 @@ import utils.DBUtils;
 import com.google.common.base.Throwables;
 
 public class MapFactory<K, V> implements Serializable, Closeable {
-    public static final long serialVersionUID = 6l;
-    private transient DB db = null;
-    protected final static Random rnd = new Random();
-    public static String DEFAULT_FOLDER = System.getProperty("java.io.tmpdir");
-    // public static String DEFAULT_NAME = "TMP" + rnd.nextInt(1000000);
-    public static int DEFAULT_CACHE_SIZE = 25;
+    public  static final long serialVersionUID = 6l;
+    private final static Random rnd = new Random();
+    
+
+    protected String folder = Constants.DEFAULT_FOLDER;
+    protected int cacheSize = Constants.DEFAULT_CACHE_SIZE;
+    protected String name = null;    
+    protected transient DB db;
+    protected transient Options options;
+    protected transient File dbFile;
+    
     private Map<String, Map<K, V>> myMaps = new HashMap<String, Map<K, V>>();
-    protected transient File dbFile = null;
-    protected transient Options options = null;
-
-    private String folder = DEFAULT_FOLDER;
-    private String fName = null;
-    private String comparatorCls = null;
-    private int cacheSize = DEFAULT_CACHE_SIZE;
-
-    protected DB createDB() {
-        // System.setProperty("java.io.timedir", folderName);
-        try {
-            this.options = new Options();
-            options.cacheSize(cacheSize * 1048576); // x1MB cache
-
-            if (this.fName == null) {
-                this.fName = "TMP" + rnd.nextInt(1000000);
-            }
-            this.dbFile = new File(this.folder, this.fName);
-
-            // /this.dbFile = File.createTempFile(name, null);
-
-            if (!this.dbFile.exists()) {
-                this.dbFile.mkdirs();
-            }
-
-            // new File(folderName + File.separator + name)
-            db = factory.open(this.dbFile, options);
-        } catch (Exception ex) {
-            Throwables.propagate(ex);
-        }
-        return db;
-
-    }
-
     public MapFactory() {
         // Initialize DB
-        this.createDB();
+        this(Constants.DEFAULT_FOLDER, "TMP" + rnd.nextInt(1000000),
+                Constants.DEFAULT_CACHE_SIZE);
 
     }
     
     public MapFactory(String folderName, String name) {
-        this.folder = folderName;
-        this.fName = name;
-        this.createDB();
+        this(folderName, name,
+                Constants.DEFAULT_CACHE_SIZE);
     }
     
     public MapFactory(String folderName, String name, int cacheSize) {
-        this.folder = folderName;
-        this.fName = name;
-        this.cacheSize = cacheSize;
-        this.createDB();
+        try {
+            if (!StringUtils.isEmpty(name)) {
+                this.name = name;
+            }
+
+            if (!StringUtils.isEmpty(folder)) {
+                this.folder = folder;
+            }
+            if (cacheSize > 0)
+                this.cacheSize = cacheSize;
+            Map m = DBUtils.createDB(this.folder, this.name, this.cacheSize);
+            this.db = (DB)m.get(Constants.DB_KEY);
+            this.options = (Options)m.get(Constants.DB_OPTIONS_KEY);
+            this.dbFile = (File) m.get(Constants.DB_FILE_KEY);
+
+        } catch (Exception ex) {
+            throw Throwables.propagate(ex);
+        }
     }
 
    
@@ -114,8 +99,14 @@ public class MapFactory<K, V> implements Serializable, Closeable {
         return myMaps.get(cacheName);
     }
 
-    public void close() throws IOException {
-        this.db.close();
+    public void close() {
+        try{
+            this.db.close();
+            factory.destroy(this.dbFile, this.options);
+        }
+        catch(Exception ex){
+            throw Throwables.propagate(ex);
+        }
 
     }
 
@@ -123,8 +114,7 @@ public class MapFactory<K, V> implements Serializable, Closeable {
             throws IOException {
 
         stream.writeObject(this.folder);
-        stream.writeObject(this.fName);
-        stream.writeObject(this.comparatorCls);
+        stream.writeObject(this.name);
         stream.writeInt(this.cacheSize);
         stream.writeObject(this.myMaps);
         this.db.close();
@@ -133,39 +123,39 @@ public class MapFactory<K, V> implements Serializable, Closeable {
     private void readObject(java.io.ObjectInputStream in) throws IOException,
             ClassNotFoundException {
         this.folder = (String) in.readObject();
-        this.fName = (String) in.readObject();
-        this.comparatorCls = (String) in.readObject();
+        this.name = (String) in.readObject();
         this.cacheSize = in.readInt();
         this.myMaps = (Map<String, Map<K, V>>) in.readObject();
-        this.createDB();
+        Map m = DBUtils.createDB(this.folder, this.name, this.cacheSize);
+        this.db = (DB)m.get(Constants.DB_KEY);
+        this.options = (Options)m.get(Constants.DB_OPTIONS_KEY);
+        this.dbFile = (File) m.get(Constants.DB_FILE_KEY);
         for (Map.Entry<String, Map<K, V>> e : this.myMaps.entrySet()) {
             ((InnerMap) e.getValue()).setDb(this.db);
         }
     }
 
-    private final class InnerMap<K, V> implements Map<K, V>, Serializable {
+    private final class InnerMap<K, V> implements Map<K, V>,IDb{
         public static final long serialVersionUID = 5l;
-        protected String name = null;
-
+        protected String cacheName = null;
         private transient DB db;
         protected int size = 0;
-        protected long longSize = 0;
 
         public InnerMap(String cacheName, DB db) {
-            this.name = cacheName;
+            this.cacheName = cacheName;
             this.db = db;
         }
 
-        private DB getDB() {
+        public DB getDB() {
             return this.db;
         }
 
         public String getName() {
-            return name;
+            return cacheName;
         }
 
         public void setName(String name) {
-            this.name = name;
+            this.cacheName = name;
         }
 
         public void setDb(DB db) {
@@ -173,22 +163,22 @@ public class MapFactory<K, V> implements Serializable, Closeable {
         }
 
         public boolean containsKey(Object key) {
-            // TODO Auto-generated method stub
-            return db.get(DBUtils.serialize(this.name, key)) != null;
+            
+            return db.get(DBUtils.serialize(this.cacheName, key)) != null;
         }
 
         public boolean containsValue(Object value) {
-            // TODO Auto-generated method stub
+            
             throw new UnsupportedOperationException();
 
         }
 
         public V get(Object key) {
-            // TODO Auto-generated method stub
+            
             if (key == null) {
                 return null;
             }
-            byte[] keyBytes = DBUtils.serialize(this.name, key);
+            byte[] keyBytes = DBUtils.serialize(this.cacheName, key);
             
             byte[] vbytes = db.get(keyBytes);
             
@@ -204,36 +194,28 @@ public class MapFactory<K, V> implements Serializable, Closeable {
             return size;
         }
 
-        public long lsize() {
-            return this.longSize;
-        }
 
         public boolean isEmpty() {
-            return longSize == 0;
+            return (size == 0);
         }
 
         public V put(K key, V value) {
-            byte[] keyArr = DBUtils.serialize(this.name, key);
+            byte[] keyArr = DBUtils.serialize(this.cacheName, key);
             byte[] valArr = DBUtils.serialize(value);
-            V v = this.get(key);
-            if (v == null) {
-                db.put(keyArr,valArr);
+            if(!this.containsKey(key)){
                 size++;
-                longSize++;
-            } else {
-                db.put(keyArr,valArr);
             }
+            db.put(keyArr,valArr);
             return value;
         }
 
         public V remove(Object key) {
             V v = this.get(key);
             if (v != null) {
-                db.delete(DBUtils.serialize(this.name, key));
+                db.delete(DBUtils.serialize(this.cacheName, key));
                 size--;
-                longSize--;
             }
-            return v;// Just a null to improve performance
+            return v;
         }
 
         public void putAll(Map<? extends K, ? extends V> m) {
@@ -244,12 +226,11 @@ public class MapFactory<K, V> implements Serializable, Closeable {
                     V v = this.get(e.getKey());
                     if (v == null) {
                         this.size++;
-                        this.longSize++;
                     }
-                    batch.put((DBUtils.serialize(this.name, e.getKey())),
+                    batch.put((DBUtils.serialize(this.cacheName, e.getKey())),
                             DBUtils.serialize(e.getValue()));
                     counter++;
-                    if (counter % 1000 == 0) {
+                    if (counter % 1000 == 0) {//Write every 1000 batches.
                         db.write(batch);
                         batch.close();
                         batch = db.createWriteBatch();
@@ -264,17 +245,15 @@ public class MapFactory<K, V> implements Serializable, Closeable {
         private void writeObject(java.io.ObjectOutputStream stream)
                 throws IOException {
 
-            stream.writeObject(this.name);
+            stream.writeObject(this.cacheName);
             stream.writeInt(this.size);
-            stream.writeLong(this.longSize);
 
         }
 
         private void readObject(java.io.ObjectInputStream in)
                 throws IOException, ClassNotFoundException {
-            this.name = (String) in.readObject();
+            this.cacheName = (String) in.readObject();
             this.size = in.readInt();
-            this.longSize = in.readLong();
         }
 
         public void clear() {
@@ -309,17 +288,17 @@ public class MapFactory<K, V> implements Serializable, Closeable {
             }
 
             public int size() {
-                // TODO Auto-generated method stub
+                
                 return this.map.size();
             }
 
             public boolean isEmpty() {
-                // TODO Auto-generated method stub
+                
                 return this.map.isEmpty();
             }
 
             public boolean contains(Object o) {
-                // TODO Auto-generated method stub
+                
                 return this.map.containsKey(o);
             }
 
@@ -340,33 +319,33 @@ public class MapFactory<K, V> implements Serializable, Closeable {
             }
 
             public boolean remove(Object o) {
-                // TODO Auto-generated method stub
+                
                 return (this.map.remove(o) != null);
             }
 
             public boolean containsAll(Collection<?> c) {
-                // TODO Auto-generated method stub
+                
                 throw new UnsupportedOperationException();
             }
 
             public boolean addAll(Collection<? extends V> c) {
-                // TODO Auto-generated method stub
+                
                 throw new UnsupportedOperationException();
             }
 
             public boolean removeAll(Collection<?> c) {
-                // TODO Auto-generated method stub
+                
                 this.map.clear();
                 return true;
             }
 
             public boolean retainAll(Collection<?> c) {
-                // TODO Auto-generated method stub
+                
                 throw new UnsupportedOperationException();
             }
 
             public void clear() {
-                // TODO Auto-generated method stub
+                
                 this.map.clear();
             }
 
@@ -380,12 +359,12 @@ public class MapFactory<K, V> implements Serializable, Closeable {
             }
 
             public int size() {
-                // TODO Auto-generated method stub
+                
                 return map.size();
             }
 
             public boolean isEmpty() {
-                // TODO Auto-generated method stub
+                
                 return map.isEmpty();
             }
 
@@ -395,33 +374,33 @@ public class MapFactory<K, V> implements Serializable, Closeable {
             }
 
             public Iterator<K> iterator() {
-                // TODO Auto-generated method stub
-                return new MyKeyIterator<K>(this.map.getDb(),this.map.name);
+                
+                return new MyKeyIterator<K>(this.map.getDb(),this.map.cacheName);
             }
 
             public Object[] toArray() {
-                // TODO Auto-generated method stub
+                
                 throw new UnsupportedOperationException();
             }
 
             public <T> T[] toArray(T[] a) {
-                // TODO Auto-generated method stub
+                
                 throw new UnsupportedOperationException();
             }
 
             public boolean add(K e) {
-                // TODO Auto-generated method stub
+                
                 throw new UnsupportedOperationException();
             }
 
             public boolean remove(Object o) {
-                // TODO Auto-generated method stub
+                
                 this.map.remove(o);
                 return true;
             }
 
             public boolean containsAll(Collection<?> c) {
-                // TODO Auto-generated method stub
+                
                 if (c != null) {
                     for (Object o : c) {
                         if (this.map.get(o) == null) {
@@ -433,17 +412,17 @@ public class MapFactory<K, V> implements Serializable, Closeable {
             }
 
             public boolean addAll(Collection<? extends K> c) {
-                // TODO Auto-generated method stub
+                
                 throw new UnsupportedOperationException();
             }
 
             public boolean retainAll(Collection<?> c) {
-                // TODO Auto-generated method stub
+                
                 throw new UnsupportedOperationException();
             }
 
             public boolean removeAll(Collection<?> c) {
-                // TODO Auto-generated method stub
+                
                 for (Object o : c) {
                     this.map.remove(o);
                 }
@@ -451,7 +430,7 @@ public class MapFactory<K, V> implements Serializable, Closeable {
             }
 
             public void clear() {
-                // TODO Auto-generated method stub
+                
                 this.map.clear();
             }
 
@@ -463,7 +442,7 @@ public class MapFactory<K, V> implements Serializable, Closeable {
             private Map<K, V> map = null;
 
             public InnerMapEntrySet(InnerMap<K, V> map) {
-                this.iterator = new MyEntryIterator<K, V>(map.getDb(),map.name);
+                this.iterator = new MyEntryIterator<K, V>(map.getDb(),map.cacheName);
                 this.map = map;
             }
 
@@ -497,7 +476,7 @@ public class MapFactory<K, V> implements Serializable, Closeable {
             }
 
             public boolean hasNext() {
-                // TODO Auto-generated method stub
+                
                 boolean hasNext = iter.hasNext();
                 
                 String k = "";
@@ -517,7 +496,7 @@ public class MapFactory<K, V> implements Serializable, Closeable {
             }
 
             public java.util.Map.Entry<K, V> next() {
-                // TODO Auto-generated method stub
+                
                 if(this.hasNext()){
                     Entry<byte[], byte[]> entry = this.iter.next();
                     String k = new String(entry.getKey()).replaceAll(this.name+'\0', "");
@@ -575,8 +554,7 @@ public class MapFactory<K, V> implements Serializable, Closeable {
             
         }
 
-        public void remove() {
-            // TODO Auto-generated method stub
+        public void remove() {            
             this.iter.remove();
         }
 
@@ -584,26 +562,27 @@ public class MapFactory<K, V> implements Serializable, Closeable {
     
     
     public static void main(String[] args) throws Exception{
-        MapFactory<String,String> mf = new MapFactory("c:/tmp/","test");
-        Map<String,String> mf2 = mf.getMap("test1");
+        MapFactory<String,String> factory = new MapFactory("c:/tmp/","test");
+        Map<String,String> map1 = factory.getMap("test1");
         for(int i=0;i<5;i++){
-            mf2.put(Integer.toString(i), Integer.toString(i));
+            map1.put(Integer.toString(i), Integer.toString(i));
         }
         
-        Map<String,String> mf3 = mf.getMap("test2");
+        Map<String,String> map2 = factory.getMap("test2");
         for(int i=5;i<10;i++){
-            mf3.put(Integer.toString(i), Integer.toString(i));
+            map2.put(Integer.toString(i), Integer.toString(i));
         }
         
+        map2.remove(Integer.toString(7));
         for(int i=0;i<5;i++){
-            System.err.println(mf2.get(Integer.toString(i)));
-            System.err.println(mf3.get(Integer.toString(i)));
+            System.err.println("Map 1 Access: "+ map1.get(Integer.toString(i)));
+            System.err.println("Map 2 Access: "+ map2.get(Integer.toString(i)));
         }
         
         
         for(int i=5;i<10;i++){
-            System.err.println(mf3.get(Integer.toString(i)));
-            System.err.println(mf2.get(Integer.toString(i)));
+            System.err.println("Map 1 Access: "+ map1.get(Integer.toString(i)));
+            System.err.println("Map 2 Access: "+ map2.get(Integer.toString(i)));
         }
         
         
@@ -623,7 +602,7 @@ public class MapFactory<K, V> implements Serializable, Closeable {
             System.err.println(me.getKey() +":"+me.getValue());
         }
         */
-        mf.close();
+        factory.close();
         
     }
 

@@ -40,7 +40,7 @@ import com.google.common.base.Throwables;
  * CacheMap is a true implementation of Map. Unlike FastHashMap which operates about 30% faster on put() and remove() CacheMap returns the
  * correct value for size() function. OffHeapMap provides a heuristic value for size which is compensated by its faster performance.
  */
-public class CacheMap<K, V>  implements Map<K,V>,IMap, Serializable, Closeable{
+public class CacheMap<K, V>  implements Map<K,V>,IDb, Serializable,Closeable{
     public  static final long serialVersionUID = 2l;
     private final static Random rnd = new Random();
     
@@ -104,7 +104,8 @@ public class CacheMap<K, V>  implements Map<K,V>,IMap, Serializable, Closeable{
     }
 
     public boolean containsValue(Object value) {
-        // TODO Auto-generated method stub
+        // Not implemented as another seperate DB would be needed to store this information
+        // Perhaps next version
         throw new UnsupportedOperationException();
 
     }
@@ -225,17 +226,18 @@ public class CacheMap<K, V>  implements Map<K,V>,IMap, Serializable, Closeable{
     public Set<java.util.Map.Entry<K, V>> entrySet() {
         return new MapEntrySet<K,V>(this);
     }
-
+    
+    
     public void close() throws IOException {
         try{
             this.db.close();
             factory.destroy(this.dbFile, this.options);
         }
         catch(Exception ex){
-            Throwables.propagate(ex);
+            throw Throwables.propagate(ex);
         }
     }
-
+    
     public DB getDB() {
         return this.db;
     }

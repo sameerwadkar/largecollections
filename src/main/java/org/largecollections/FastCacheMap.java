@@ -50,7 +50,7 @@ import com.google.common.base.Throwables;
  * typical Map implementation. In return it allows LargeCacheMap to have size higher than Integer.MAX_VALUE
  * 
  */
-public class FastCacheMap<K, V> implements Map<K, V>, Serializable,  Closeable,IMap{
+public class FastCacheMap<K, V> implements Map<K, V>, Serializable,  Closeable{
     public  static final long serialVersionUID = 1l;
     private final static Random rnd = new Random();
     public static String DEFAULT_FOLDER = System.getProperty("java.io.tmpdir");
