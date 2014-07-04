@@ -69,7 +69,7 @@ public class MapFactory<K, V> implements Serializable, Closeable {
                 Constants.DEFAULT_CACHE_SIZE);
     }
     
-    public MapFactory(String folderName, String name, int cacheSize) {
+    public MapFactory(String folder, String name, int cacheSize) {
         try {
             if (!StringUtils.isEmpty(name)) {
                 this.name = name;
@@ -91,6 +91,9 @@ public class MapFactory<K, V> implements Serializable, Closeable {
     }
 
    
+    public static void getInstance(String folder,String name,int cacheSize){
+        
+    }
 
     public Map<K, V> getMap(String cacheName) {
         if (myMaps.get(cacheName) == null) {
@@ -136,7 +139,7 @@ public class MapFactory<K, V> implements Serializable, Closeable {
         }
     }
 
-    private final class InnerMap<K, V> implements Map<K, V>,IDb{
+    private final class InnerMap<K, V> implements Map<K, V>,IDb, Serializable{
         public static final long serialVersionUID = 5l;
         protected String cacheName = null;
         private transient DB db;
@@ -164,8 +167,9 @@ public class MapFactory<K, V> implements Serializable, Closeable {
         }
 
         public boolean containsKey(Object key) {
-            
-            return db.get(serdeUtils.serializeKey(this.cacheName, (K)key)) != null;
+            byte[] keyBytes = serdeUtils.serializeKey(this.cacheName, (K)key);
+            byte[] valBytes = db.get(keyBytes);
+            return valBytes != null;
         }
 
         public boolean containsValue(Object value) {
