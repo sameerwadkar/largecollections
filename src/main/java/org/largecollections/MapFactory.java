@@ -305,7 +305,6 @@ public class MapFactory<K, V> implements Serializable, Closeable {
         }
 
         public Set<java.util.Map.Entry<K, V>> entrySet() {
-            // Return an Iterator backed by the DB
             return new InnerMapEntrySet<K, V>(this);
         }
 
@@ -357,28 +356,23 @@ public class MapFactory<K, V> implements Serializable, Closeable {
             }
 
             public boolean containsAll(Collection<?> c) {
-
                 throw new UnsupportedOperationException();
             }
 
             public boolean addAll(Collection<? extends V> c) {
-
                 throw new UnsupportedOperationException();
             }
 
             public boolean removeAll(Collection<?> c) {
-
-                this.map.clear();
-                return true;
+                throw new UnsupportedOperationException();
+                
             }
 
             public boolean retainAll(Collection<?> c) {
-
                 throw new UnsupportedOperationException();
             }
 
             public void clear() {
-
                 this.map.clear();
             }
 
