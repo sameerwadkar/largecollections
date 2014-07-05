@@ -163,7 +163,37 @@ public class MapFactoryTest {
            System.err.println(k);
        }
    }
-   
-
+   @Test
+   public void testEntrySet() {
+       Map<String,String> map1 = factory.getMap(name1);
+       
+       Map<String,String> tempMap1 = new HashMap<String,String>();
+       for(int i=0;i<5;i++){
+           tempMap1.put(Integer.toString(i), Integer.toString(i));
+       }  
+       map1.putAll(tempMap1);
+       System.err.println(map1.get("4"));
+       //Set<String> keys = map1.entrySet();
+       for (Map.Entry<String, String> e: map1.entrySet()) {
+           System.err.println("Entry Set Key:"+e.getKey() + ", Entry Set Value:"+e.getValue());
+       }
+   }
+   /*
+   @Test
+   public void testKeySetForPerformance() {
+       Map<String,String> map1 = factory.getMap(name1);
+       
+       Map<String,String> tempMap1 = new HashMap<String,String>();
+       for(int i=0;i<1000000;i++){
+           tempMap1.put(Integer.toString(i), Integer.toString(i));
+       }  
+       map1.putAll(tempMap1);
+       System.err.println(map1.get("50000"));
+       Set<String> keys = map1.keySet();
+       for (String k : keys) {
+           //System.err.println(k);
+       }
+   }
+   */
     
 }

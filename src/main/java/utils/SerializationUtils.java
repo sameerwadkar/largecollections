@@ -208,7 +208,7 @@ public class SerializationUtils<K,V> implements Serializable{
 
     }
     
-    
+    /*
     public   byte[] serializeKey(String cacheName,K key) {
         determineKeyType(key);
         byte[] cNameBArry = null;
@@ -226,7 +226,7 @@ public class SerializationUtils<K,V> implements Serializable{
             throw new RuntimeException(ex);
         }
     }
-    
+    */
     
     private void writeObject(java.io.ObjectOutputStream stream)
             throws IOException {

@@ -39,6 +39,7 @@ import org.iq80.leveldb.Options;
 import org.iq80.leveldb.WriteBatch;
 
 import utils.DBUtils;
+import utils.KeyUtils;
 import utils.SerializationUtils;
 
 import com.google.common.base.Throwables;
@@ -171,7 +172,10 @@ public class MapFactory<K, V> implements Serializable, Closeable {
         }
 
         public boolean containsKey(Object key) {
-            byte[] keyBytes = serdeUtils.serializeKey(this.cacheName, (K) key);
+            byte[] keyArr = serdeUtils.serializeKey((K)key);
+            byte[] keyBytes = KeyUtils.getPrefixedKey(this.cacheName, keyArr);
+
+           
             byte[] valBytes = db.get(keyBytes);
             return valBytes != null;
         }
@@ -187,7 +191,10 @@ public class MapFactory<K, V> implements Serializable, Closeable {
             if (key == null) {
                 return null;
             }
-            byte[] keyBytes = serdeUtils.serializeKey(this.cacheName, (K) key);
+            byte[] keyArr = serdeUtils.serializeKey((K)key);
+            byte[] keyBytes = KeyUtils.getPrefixedKey(this.cacheName, keyArr);
+
+            //byte[] keyBytes = serdeUtils.serializeKey(this.cacheName, (K) key);
 
             byte[] vbytes = db.get(keyBytes);
 
@@ -208,19 +215,24 @@ public class MapFactory<K, V> implements Serializable, Closeable {
         }
 
         public V put(K key, V value) {
-            byte[] keyArr = serdeUtils.serializeKey(this.cacheName, key);
+            byte[] keyArr = serdeUtils.serializeKey(key);
+            byte[] fullKeyArr = KeyUtils.getPrefixedKey(this.cacheName, keyArr);
+            //byte[] keyArr = serdeUtils.serializeKey(this.cacheName, key);
             byte[] valArr = serdeUtils.serializeValue(value);
             if (!this.containsKey(key)) {
                 size++;
             }
-            db.put(keyArr, valArr);
+            db.put(fullKeyArr, valArr);
             return value;
         }
 
         public V remove(Object key) {
+           
             V v = this.get(key);
             if (v != null) {
-                db.delete(serdeUtils.serializeKey(this.cacheName, (K) key));
+                byte[] keyArr = serdeUtils.serializeKey((K)key);
+                byte[] fullKeyArr = KeyUtils.getPrefixedKey(this.cacheName, keyArr);
+                db.delete(fullKeyArr);
                 size--;
             }
             return v;
@@ -238,9 +250,10 @@ public class MapFactory<K, V> implements Serializable, Closeable {
                     if (v == null) {
                         this.size++;
                     }
-                    batch.put(
-                            (serdeUtils.serializeKey(this.cacheName,
-                                    (K) e.getKey())),
+                    byte[] keyArr = serdeUtils.serializeKey(e.getKey());
+                    byte[] keyBytes = KeyUtils.getPrefixedKey(this.cacheName, keyArr);
+
+                    batch.put(keyBytes,
                             serdeUtils.serializeValue(e.getValue()));
                     counter++;
                     if (counter % 1000 == 0) {// Write every 1000 batches.
@@ -281,10 +294,6 @@ public class MapFactory<K, V> implements Serializable, Closeable {
                 this.db.delete(e.getKey());
                 this.size--;
             }
-            /*
-             * System.out.println("This is clear:"+this.db.iterator().hasNext());
-             * Set<K> keys = this.keySet(); for (K k : keys) { this.remove(k); }
-             */
         }
 
         public Set<K> keySet() {
@@ -323,7 +332,7 @@ public class MapFactory<K, V> implements Serializable, Closeable {
 
             public boolean contains(Object o) {
 
-                return this.map.containsKey(o);
+                throw new UnsupportedOperationException();
             }
 
             public Iterator<V> iterator() {
@@ -461,8 +470,7 @@ public class MapFactory<K, V> implements Serializable, Closeable {
             private Map<K, V> map = null;
 
             public InnerMapEntrySet(InnerMap<K, V> map) {
-                this.iterator = new MyEntryIterator<K, V>(map.getDb(),
-                        map.cacheName);
+                this.iterator = new MyEntryIterator<K, V>(map);
                 this.map = map;
             }
 
@@ -483,50 +491,60 @@ public class MapFactory<K, V> implements Serializable, Closeable {
 
             private DBIterator iter = null;
             private String name = null;
-
-            public MyEntryIterator(DB db, String name) {
-
-                try {
-                    this.iter = db.iterator();
-                    this.name = name;
-                    this.iter.seekToFirst();
-                } catch (Exception ex) {
-                    Throwables.propagate(ex);
+            private SerializationUtils<K,V> serdeUtils = null;
+            private boolean hasNext = false;
+            Entry<byte[], byte[]> entry = null;
+            private boolean markIteratorState(boolean hasNext,Entry<byte[],byte[]> e){
+                this.hasNext = hasNext;
+                this.entry = e;
+                return this.hasNext;
+            }
+            private boolean manageIteratorState(Entry<byte[],byte[]> e){  
+                byte[][] out = KeyUtils.getPrefixAndKey(e.getKey());       
+                String prefix = new String(out[0]);
+                if(prefix.equals(this.name)){
+                    return this.markIteratorState(true, e);
+                }
+                else{
+                    return this.markIteratorState(false, null);
+                }
+         }            
+            public MyEntryIterator(InnerMap<K,V> map) {
+                this.iter = map.getDb().iterator();
+                this.iter.seekToFirst();
+                this.name = map.getCacheName();
+                this.serdeUtils = map.getSerDeUtils();
+                while (iter.hasNext()) {
+                    Entry<byte[],byte[]>e = this.iter.next();
+                    if(this.manageIteratorState(e)){
+                        break;
+                    }
                 }
             }
 
             public boolean hasNext() {
-
-                boolean hasNext = iter.hasNext();
-
-                String k = "";
-                Entry<byte[], byte[]> entry = null;
-                while (iter.hasNext()
-                        && !k.startsWith(this.name + SerializationUtils.sepStr)) {
-                    entry = this.iter.next();
-                    k = new String(entry.getKey());
-                }
-                if (k.startsWith(this.name + "\0")) {
-                    this.iter.prev();
-                } else {
-                    hasNext = false;
-                }
-
                 return hasNext;
             }
 
             public java.util.Map.Entry<K, V> next() {
-
-                if (this.hasNext()) {
-                    Entry<byte[], byte[]> entry = this.iter.next();
-                    String k = new String(entry.getKey()).replaceAll(
-                            this.name + '\0', "");
-                    return new SimpleEntry((K) serdeUtils.deserializeKey(k
-                            .getBytes()), (V) serdeUtils.deserializeValue(entry
-                            .getValue()));
+                java.util.Map.Entry<K, V>  retVal = null;
+                if (this.hasNext) {
+                    K key =  (K) serdeUtils.deserializeKey(KeyUtils.getKey(entry.getKey()));
+                    V value =  (V) serdeUtils.deserializeValue(entry.getValue());
+                    retVal = new SimpleEntry(key,value);
+                   
+                    if(this.iter.hasNext()){
+                        this.manageIteratorState(this.iter.next());
+                    }
+                    else{
+                        this.markIteratorState(false,null);
+                    }
+                    
+                } else {
+                    throw new NoSuchElementException();
                 }
-                throw new NoSuchElementException();
-
+                return retVal;
+               
             }
 
             public void remove() {
@@ -541,7 +559,7 @@ public class MapFactory<K, V> implements Serializable, Closeable {
 
         private DBIterator iter = null;
         private String name = null;
-        private SerializationUtils serdeUtils = null;
+        private SerializationUtils<K,Object> serdeUtils = null;
         private boolean hasNext = false;
         Entry<byte[], byte[]> entry = null;
 
@@ -551,13 +569,14 @@ public class MapFactory<K, V> implements Serializable, Closeable {
             return this.hasNext;
         }
         private boolean manageIteratorState(Entry<byte[],byte[]> e){  
-                String k = new String(e.getKey());
-                if (k.startsWith(this.name + SerializationUtils.sepStr)) {
-                    return this.markIteratorState(true, e);
-                }
-                else{
-                    return this.markIteratorState(false, null);
-                }
+               byte[][] out = KeyUtils.getPrefixAndKey(e.getKey());       
+               String prefix = new String(out[0]);
+               if(prefix.equals(this.name)){
+                   return this.markIteratorState(true, e);
+               }
+               else{
+                   return this.markIteratorState(false, null);
+               }
         }
         
         public MyKeyIterator(InnerMap map) {
@@ -580,15 +599,7 @@ public class MapFactory<K, V> implements Serializable, Closeable {
         public K next() {
             K retVal = null;
             if (this.hasNext) {
-                String k = new String(entry.getKey());
-                
-                byte[] actKey = new byte[entry.getKey().length
-                        - (this.name.getBytes().length + 1)];
-                System.arraycopy(entry.getKey(),
-                        this.name.getBytes().length + 1, actKey, 0,
-                        actKey.length);
-                retVal =  (K) serdeUtils.deserializeKey(actKey);
-               
+                retVal =  (K) serdeUtils.deserializeKey(KeyUtils.getKey(entry.getKey()));
                 if(this.iter.hasNext()){
                     this.manageIteratorState(this.iter.next());
                 }
