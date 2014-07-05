@@ -336,7 +336,7 @@ public class MapFactory<K, V> implements Serializable, Closeable {
             }
 
             public Iterator<V> iterator() {
-                return new MapValueIterator<V>(this.map.getDb());
+                return new MyValueIterator<V>(this.map);
             }
 
             public Object[] toArray() {
@@ -429,6 +429,7 @@ public class MapFactory<K, V> implements Serializable, Closeable {
             }
 
             public boolean containsAll(Collection<?> c) {
+                
                 if (c != null) {
                     for (Object o : c) {
                         if (this.map.get(o) == null) {
@@ -485,7 +486,47 @@ public class MapFactory<K, V> implements Serializable, Closeable {
             }
 
         }
+        private final class MyKeyIterator<K> implements Iterator<K> {
+            private MyEntryIterator<K,V> entryIterator = null;
+            public MyKeyIterator(InnerMap<K,V> map){
+                entryIterator = new MyEntryIterator<K,V>(map);
+            }
+            public boolean hasNext() {
 
+                return entryIterator.hasNext;
+            }
+
+            public K next() {
+
+                return entryIterator.next().getKey();
+            }
+
+            public void remove() {
+                 entryIterator.remove();
+                
+            }
+        }
+        private final class MyValueIterator<V> implements Iterator<V> {
+            private MyEntryIterator<K,V> entryIterator = null;
+            public MyValueIterator(InnerMap<K,V> map){
+                entryIterator = new MyEntryIterator<K,V>(map);
+            }
+            public boolean hasNext() {
+
+                return entryIterator.hasNext;
+            }
+
+            public V next() {
+
+                return entryIterator.next().getValue();
+            }
+
+            public void remove() {
+                 entryIterator.remove();
+                
+            }
+        }
+        
         private final class MyEntryIterator<K, V> implements
                 Iterator<java.util.Map.Entry<K, V>> {
 
@@ -548,75 +589,17 @@ public class MapFactory<K, V> implements Serializable, Closeable {
             }
 
             public void remove() {
-                this.iter.remove();
-            }
-
-        }
-
-    }
-
-    private final class MyKeyIterator<K> implements Iterator<K> {
-
-        private DBIterator iter = null;
-        private String name = null;
-        private SerializationUtils<K,Object> serdeUtils = null;
-        private boolean hasNext = false;
-        Entry<byte[], byte[]> entry = null;
-
-        private boolean markIteratorState(boolean hasNext,Entry<byte[],byte[]> e){
-            this.hasNext = hasNext;
-            this.entry = e;
-            return this.hasNext;
-        }
-        private boolean manageIteratorState(Entry<byte[],byte[]> e){  
-               byte[][] out = KeyUtils.getPrefixAndKey(e.getKey());       
-               String prefix = new String(out[0]);
-               if(prefix.equals(this.name)){
-                   return this.markIteratorState(true, e);
-               }
-               else{
-                   return this.markIteratorState(false, null);
-               }
-        }
-        
-        public MyKeyIterator(InnerMap map) {
-            this.iter = map.getDb().iterator();
-            this.iter.seekToFirst();
-            this.name = map.getCacheName();
-            this.serdeUtils = map.getSerDeUtils();
-            while (iter.hasNext()) {
-                Entry<byte[],byte[]>e = this.iter.next();
-                if(this.manageIteratorState(e)){
-                    break;
+                if(this.hasNext){
+                    this.iter.remove();
                 }
-            }
-        }
-
-        public boolean hasNext() {
-            return hasNext;
-        }
-
-        public K next() {
-            K retVal = null;
-            if (this.hasNext) {
-                retVal =  (K) serdeUtils.deserializeKey(KeyUtils.getKey(entry.getKey()));
                 if(this.iter.hasNext()){
                     this.manageIteratorState(this.iter.next());
                 }
                 else{
                     this.markIteratorState(false,null);
                 }
-                
-            } else {
-                throw new NoSuchElementException();
             }
-            return retVal;
-            
 
-        }
-
-        public void remove() {
-            this.iter.remove();
         }
 
     }
