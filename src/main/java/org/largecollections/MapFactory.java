@@ -42,7 +42,10 @@ import utils.DBUtils;
 import utils.KeyUtils;
 import utils.SerializationUtils;
 
+import com.google.common.base.Preconditions;
 import com.google.common.base.Throwables;
+import com.google.common.hash.BloomFilter;
+import com.google.common.hash.Funnels;
 
 public class MapFactory<K, V> implements Serializable, Closeable {
     public static final long serialVersionUID = 6l;
@@ -56,7 +59,7 @@ public class MapFactory<K, V> implements Serializable, Closeable {
     protected transient File dbFile;
 
     private Map<String, Map<K, V>> myMaps = new HashMap<String, Map<K, V>>();
-
+    private BloomFilter<byte[]> bloomFilter = BloomFilter.create(Funnels.byteArrayFunnel(), 10000000);
     public MapFactory() {
         this(Constants.DEFAULT_FOLDER, "TMP" + rnd.nextInt(1000000),
                 Constants.DEFAULT_CACHE_SIZE);
@@ -88,8 +91,10 @@ public class MapFactory<K, V> implements Serializable, Closeable {
         }
     }
 
-    public static void getInstance(String folder, String name, int cacheSize) {
-
+    public void setBloomFilterSize(int size) {
+        Preconditions.checkState(this.myMaps.size()==0,"Cannot reset bloom filter after Factory has generated maps");
+        Preconditions.checkArgument(size<=0, "Bloom Filter must have a non-zero estimated size");
+        this.bloomFilter = BloomFilter.create(Funnels.byteArrayFunnel(), size);
     }
 
     public Map<K, V> getMap(String cacheName) {
@@ -117,6 +122,7 @@ public class MapFactory<K, V> implements Serializable, Closeable {
         stream.writeObject(this.name);
         stream.writeInt(this.cacheSize);
         stream.writeObject(this.myMaps);
+        stream.writeObject(this.bloomFilter);
         this.db.close();
     }
 
@@ -126,6 +132,7 @@ public class MapFactory<K, V> implements Serializable, Closeable {
         this.name = (String) in.readObject();
         this.cacheSize = in.readInt();
         this.myMaps = (Map<String, Map<K, V>>) in.readObject();
+        this.bloomFilter = (BloomFilter<byte[]>) in.readObject();
         Map m = DBUtils.createDB(this.folder, this.name, this.cacheSize);
         this.db = (DB) m.get(Constants.DB_KEY);
         this.options = (Options) m.get(Constants.DB_OPTIONS_KEY);
@@ -174,9 +181,11 @@ public class MapFactory<K, V> implements Serializable, Closeable {
         public boolean containsKey(Object key) {
             byte[] keyArr = serdeUtils.serializeKey((K)key);
             byte[] keyBytes = KeyUtils.getPrefixedKey(this.cacheName, keyArr);
-
-           
-            byte[] valBytes = db.get(keyBytes);
+            byte[] valBytes = null;
+            if(bloomFilter.mightContain(keyBytes)){
+                valBytes = db.get(keyBytes);
+            }           
+            
             return valBytes != null;
         }
 
@@ -189,20 +198,26 @@ public class MapFactory<K, V> implements Serializable, Closeable {
         public V get(Object key) {
 
             if (key == null) {
-                return null;
+                throw new RuntimeException("Nulls are not allowed as key");
             }
             byte[] keyArr = serdeUtils.serializeKey((K)key);
             byte[] keyBytes = KeyUtils.getPrefixedKey(this.cacheName, keyArr);
 
+            if(bloomFilter.mightContain(keyBytes)){
+                byte[] vbytes = db.get(keyBytes);
+
+                if (vbytes == null) {
+                    return null;
+                } else {
+                    return (V) serdeUtils.deserializeValue(vbytes);
+                }
+            }
+            else{
+                return null;
+            }
             //byte[] keyBytes = serdeUtils.serializeKey(this.cacheName, (K) key);
 
-            byte[] vbytes = db.get(keyBytes);
 
-            if (vbytes == null) {
-                return null;
-            } else {
-                return (V) serdeUtils.deserializeValue(vbytes);
-            }
 
         }
 
@@ -215,11 +230,16 @@ public class MapFactory<K, V> implements Serializable, Closeable {
         }
 
         public V put(K key, V value) {
+            if(key==null || value==null){
+                throw new RuntimeException("Nulls are not allowed as key or value");
+            }
             byte[] keyArr = serdeUtils.serializeKey(key);
             byte[] fullKeyArr = KeyUtils.getPrefixedKey(this.cacheName, keyArr);
             //byte[] keyArr = serdeUtils.serializeKey(this.cacheName, key);
+            
             byte[] valArr = serdeUtils.serializeValue(value);
             if (!this.containsKey(key)) {
+                bloomFilter.put(fullKeyArr);
                 size++;
             }
             db.put(fullKeyArr, valArr);
@@ -227,7 +247,7 @@ public class MapFactory<K, V> implements Serializable, Closeable {
         }
 
         public V remove(Object key) {
-           
+            
             V v = this.get(key);
             if (v != null) {
                 byte[] keyArr = serdeUtils.serializeKey((K)key);
@@ -244,15 +264,16 @@ public class MapFactory<K, V> implements Serializable, Closeable {
                 int counter = 0;
                 for (Map.Entry<? extends K, ? extends V> e : m.entrySet()) {
                     V v = null;
+                    byte[] keyArr = serdeUtils.serializeKey(e.getKey());
+                    byte[] keyBytes = KeyUtils.getPrefixedKey(this.cacheName, keyArr);
                     if (this.size > 0) {
                         v = this.get(e.getKey());
                     }
-                    if (v == null) {
+                    if (v == null) {  
+                        bloomFilter.put(keyBytes);
                         this.size++;
                     }
-                    byte[] keyArr = serdeUtils.serializeKey(e.getKey());
-                    byte[] keyBytes = KeyUtils.getPrefixedKey(this.cacheName, keyArr);
-
+                    
                     batch.put(keyBytes,
                             serdeUtils.serializeValue(e.getValue()));
                     counter++;
