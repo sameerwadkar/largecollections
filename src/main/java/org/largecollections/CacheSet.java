@@ -99,7 +99,7 @@ public  class CacheSet<K> implements Set<K>,Closeable,IDb {
             this.db = (DB)m.get(Constants.DB_KEY);
             this.options = (Options)m.get(Constants.DB_OPTIONS_KEY);
             this.dbFile = (File) m.get(Constants.DB_FILE_KEY);
-
+            this.initializeBloomFilter();
         } catch (Exception ex) {
             Throwables.propagate(ex);
         }

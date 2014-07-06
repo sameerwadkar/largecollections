@@ -25,6 +25,7 @@ import java.util.Iterator;
 import java.util.Map;
 import java.util.Random;
 import java.util.Set;
+import java.util.Map.Entry;
 
 import org.apache.commons.lang.StringUtils;
 import org.iq80.leveldb.DB;
@@ -93,10 +94,12 @@ public class CacheSetWithUnqHashCode<K> implements Set<K>, Closeable, IDb {
             this.db = (DB) m.get(Constants.DB_KEY);
             this.options = (Options) m.get(Constants.DB_OPTIONS_KEY);
             this.dbFile = (File) m.get(Constants.DB_FILE_KEY);
+            this.initializeBloomFilter();
 
         } catch (Exception ex) {
             Throwables.propagate(ex);
         }
+        
 
     }
 
@@ -127,14 +130,14 @@ public class CacheSetWithUnqHashCode<K> implements Set<K>, Closeable, IDb {
     }
 
     public boolean contains(Object key) {
-
-        K v = serdeUtils.deserializeValue(db.get(Integer.toString(key.hashCode()).getBytes()));
-        if (v != null) {
-            return true;
-        } else {
-            return false;
+        if(this.bloomFilter.mightContain(key.hashCode())){
+            K v = serdeUtils.deserializeValue(db.get(Integer.toString(key.hashCode()).getBytes()));
+            if (v != null) {
+                return true;
+            } 
         }
 
+        return false;
     }
 
     // @TODO - The Iterators need to reflect this change
@@ -156,6 +159,7 @@ public class CacheSetWithUnqHashCode<K> implements Set<K>, Closeable, IDb {
             size++;
         }
         db.put(Integer.toString(e.hashCode()).getBytes(), serdeUtils.serializeValue(e));
+        this.bloomFilter.put(e.hashCode());
         return !contains;
     }
 
@@ -178,6 +182,7 @@ public class CacheSetWithUnqHashCode<K> implements Set<K>, Closeable, IDb {
 
         }
         this.size = 0;
+        this.initializeBloomFilter();
     }
 
     public boolean containsAll(Collection<?> c) {
@@ -268,5 +273,17 @@ public class CacheSetWithUnqHashCode<K> implements Set<K>, Closeable, IDb {
         // TODO Auto-generated method stub
         return this.db;
     }
-
+    public void optimize() {
+        try {
+            this.initializeBloomFilter();
+            DBIterator iter = this.db.iterator();
+            while(iter.hasNext()){
+                Entry<byte[],byte[]> e = iter.next();
+                Integer i = this.serdeUtils.deserializeKey(e.getKey());
+                this.bloomFilter.put(i);
+            }
+        } catch (Exception ex) {
+             Throwables.propagate(ex);
+        }
+    }
 }
