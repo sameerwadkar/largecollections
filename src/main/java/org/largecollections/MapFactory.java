@@ -132,7 +132,7 @@ public class MapFactory<K, V> implements Serializable, Closeable {
         }
     }
     
-    public void reindexBloomFilter() {
+    public void optimize() {
         try {
             this.initializeBloomFilter();
             for(Entry<String,Map<K,V>> entry:this.myMaps.entrySet()){
