@@ -34,7 +34,7 @@ public class ListFactory<V> implements Closeable {
     public ListFactory(String factoryFolder, String factoryName, int cacheSize){
         this.factory = new MapFactory(factoryFolder, factoryName, cacheSize);
     }
-    protected  List<V> getInstance(String lstName) {        
+    protected  List<V> getList(String lstName) {        
          return new WriteOnceReadManyArrayList<V>(this.factory,lstName);
     }
     public void close() {

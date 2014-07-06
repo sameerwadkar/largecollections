@@ -13,8 +13,8 @@ public class ListFactoryTest {
     @Test
     public void testGetInstance() {
         ListFactory<String> lstFactory = new ListFactory<String>("c:/tmp","lstFactory",25);
-        List<String> lst1 = lstFactory.getInstance("l1");
-        List<String> lst2 = lstFactory.getInstance("l2");
+        List<String> lst1 = lstFactory.getList("l1");
+        List<String> lst2 = lstFactory.getList("l2");
         for(int i=0;i<5;i++){
             lst1.add(Integer.toString(i));
         }
