@@ -34,7 +34,11 @@ import org.iq80.leveldb.Options;
 import utils.DBUtils;
 import utils.SerializationUtils;
 
+import com.google.common.base.Preconditions;
 import com.google.common.base.Throwables;
+import com.google.common.hash.BloomFilter;
+import com.google.common.hash.Funnel;
+import com.google.common.hash.PrimitiveSink;
 
 public class CacheSetWithUnqHashCode<K> implements Set<K>, Closeable, IDb {
     public static final long serialVersionUID = 10l;
@@ -48,7 +52,31 @@ public class CacheSetWithUnqHashCode<K> implements Set<K>, Closeable, IDb {
     protected transient Options options;
     protected transient File dbFile;
     protected transient SerializationUtils<Integer, K> serdeUtils = new SerializationUtils<Integer, K>();
+    private int bloomFilterSize = 10000000;
+    protected  transient Funnel<Integer> myFunnel = null;
+    private BloomFilter<Integer> bloomFilter = null;
+    
+    public void setBloomFilterSize(int bFilterSize) {
+        Preconditions
+                .checkState(this.size() == 0,
+                        "Cannot reset bloom filter size when the map has non-zero size");
+        Preconditions.checkArgument(bFilterSize <= 0,
+                "Bloom Filter must have a non-zero estimated size");
+        this.bloomFilterSize = bFilterSize;
+        this.initializeBloomFilter();
 
+    }
+
+    private void initializeBloomFilter(){
+        this.myFunnel = new Funnel<Integer>() {
+            public void funnel(Integer obj, PrimitiveSink into) {
+                into.putInt(obj);
+                  
+              }
+            };  
+        this.bloomFilter = BloomFilter.create(myFunnel, this.bloomFilterSize);
+    }
+    
     public CacheSetWithUnqHashCode(String folder, String name, int cacheSize,
             String comparatorCls) {
         try {

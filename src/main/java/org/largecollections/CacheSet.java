@@ -136,11 +136,15 @@ public  class CacheSet<K> implements Set<K>,Closeable,IDb {
 
 
     private List<K> getListByHashCode(int hashCode){
-        byte[] listBytes = db.get(serdeUtils.serializeKey(hashCode));
         List<K> vals = null;
-        if(listBytes!=null){
-            vals = (List<K>) serdeUtils.deserializeValue(listBytes);
-        }
+        if(this.bloomFilter.mightContain(hashCode)){
+            byte[] listBytes = db.get(serdeUtils.serializeKey(hashCode));
+            
+            if(listBytes!=null){
+                vals = (List<K>) serdeUtils.deserializeValue(listBytes);
+            }      
+        }       
+
         return vals;
     }
     public boolean contains(Object key) {
