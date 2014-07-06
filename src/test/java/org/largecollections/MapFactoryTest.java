@@ -71,7 +71,11 @@ public class MapFactoryTest {
             
             Assert.assertNull(map1.get(Integer.toString(i)));
         }
-        
+        map2.clear();
+        System.err.println("Map2 Size="+map2.size());
+        System.err.println("Map1 Size="+map1.size());
+        Assert.assertEquals(0, map2.size());
+        Assert.assertEquals(5, map1.size());
     }
    
    
@@ -108,16 +112,22 @@ public class MapFactoryTest {
            
            Assert.assertNull(map1.get(Integer.toString(i)));
        }
-
-       FileSerDeUtils.serializeToFile(factory, serializedFile);
        
-       factory = (MapFactory<String,String>)FileSerDeUtils.deserializeFromFile(serializedFile);
        Map<String,String> map21 = factory.getMap(name1);
        Map<String,String> map22 = factory.getMap(name2);
        Assert.assertEquals(5, map21.size());
       
        Assert.assertEquals(4, map22.size());
+       factory.reindexBloomFilter();
        
+       FileSerDeUtils.serializeToFile(factory, serializedFile);
+       
+       factory = (MapFactory<String,String>)FileSerDeUtils.deserializeFromFile(serializedFile);
+       map21 = factory.getMap(name1);
+       map22 = factory.getMap(name2);
+       Assert.assertEquals(5, map21.size());
+      
+       Assert.assertEquals(4, map22.size());
    }
    @Test
    public void testPutAll() {
