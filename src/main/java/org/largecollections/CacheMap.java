@@ -25,6 +25,7 @@ import java.util.Collection;
 import java.util.Map;
 import java.util.Random;
 import java.util.Set;
+import java.util.Map.Entry;
 
 import org.apache.commons.lang.StringUtils;
 import org.iq80.leveldb.DB;
@@ -122,6 +123,17 @@ public class CacheMap<K, V> implements Map<K, V>, IDb, Serializable, Closeable {
 
     }
 
+    public void optimize() {
+        try {
+            this.initializeBloomFilter();
+            for(Entry<K,V> entry:this.entrySet()){
+                this.bloomFilter.put(entry.getKey());
+            }
+        } catch (Exception ex) {
+            throw Throwables.propagate(ex);
+        }
+    }
+    
     public boolean containsKey(Object key) {
         
         byte[] valBytes = null;
