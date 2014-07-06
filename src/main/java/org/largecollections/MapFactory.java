@@ -54,12 +54,13 @@ public class MapFactory<K, V> implements Serializable, Closeable {
     protected String folder = Constants.DEFAULT_FOLDER;
     protected int cacheSize = Constants.DEFAULT_CACHE_SIZE;
     protected String name = null;
+    private int bloomFilterSize=10000000;
     protected transient DB db;
     protected transient Options options;
     protected transient File dbFile;
 
     private Map<String, Map<K, V>> myMaps = new HashMap<String, Map<K, V>>();
-    private BloomFilter<byte[]> bloomFilter = BloomFilter.create(Funnels.byteArrayFunnel(), 10000000);
+    private BloomFilter<byte[]> bloomFilter = BloomFilter.create(Funnels.byteArrayFunnel(), this.bloomFilterSize);
     public MapFactory() {
         this(Constants.DEFAULT_FOLDER, "TMP" + rnd.nextInt(1000000),
                 Constants.DEFAULT_CACHE_SIZE);
@@ -91,10 +92,11 @@ public class MapFactory<K, V> implements Serializable, Closeable {
         }
     }
 
-    public void setBloomFilterSize(int size) {
+    public void setBloomFilterSize(int bFilterSize) {
         Preconditions.checkState(this.myMaps.size()==0,"Cannot reset bloom filter after Factory has generated maps");
-        Preconditions.checkArgument(size<=0, "Bloom Filter must have a non-zero estimated size");
-        this.bloomFilter = BloomFilter.create(Funnels.byteArrayFunnel(), size);
+        Preconditions.checkArgument(bFilterSize<=0, "Bloom Filter must have a non-zero estimated size");
+        this.bloomFilterSize=bFilterSize;
+        this.bloomFilter = BloomFilter.create(Funnels.byteArrayFunnel(), this.bloomFilterSize);
     }
 
     public Map<K, V> getMap(String cacheName) {
@@ -117,12 +119,12 @@ public class MapFactory<K, V> implements Serializable, Closeable {
 
     private void writeObject(java.io.ObjectOutputStream stream)
             throws IOException {
-
         stream.writeObject(this.folder);
         stream.writeObject(this.name);
-        stream.writeInt(this.cacheSize);
-        stream.writeObject(this.myMaps);
+        stream.writeInt(this.cacheSize);        
+        stream.writeInt(this.bloomFilterSize);
         stream.writeObject(this.bloomFilter);
+        stream.writeObject(this.myMaps);
         this.db.close();
     }
 
@@ -131,8 +133,10 @@ public class MapFactory<K, V> implements Serializable, Closeable {
         this.folder = (String) in.readObject();
         this.name = (String) in.readObject();
         this.cacheSize = in.readInt();
-        this.myMaps = (Map<String, Map<K, V>>) in.readObject();
+        
+        this.bloomFilterSize = in.readInt();
         this.bloomFilter = (BloomFilter<byte[]>) in.readObject();
+        this.myMaps = (Map<String, Map<K, V>>) in.readObject();
         Map m = DBUtils.createDB(this.folder, this.name, this.cacheSize);
         this.db = (DB) m.get(Constants.DB_KEY);
         this.options = (Options) m.get(Constants.DB_OPTIONS_KEY);
@@ -272,8 +276,7 @@ public class MapFactory<K, V> implements Serializable, Closeable {
                     if (v == null) {  
                         bloomFilter.put(keyBytes);
                         this.size++;
-                    }
-                    
+                    }                    
                     batch.put(keyBytes,
                             serdeUtils.serializeValue(e.getValue()));
                     counter++;
@@ -315,6 +318,9 @@ public class MapFactory<K, V> implements Serializable, Closeable {
                 this.db.delete(e.getKey());
                 this.size--;
             }
+            //Bloom Filter
+            bloomFilter= BloomFilter.create(Funnels.byteArrayFunnel(), bloomFilterSize);
+            
         }
 
         public Set<K> keySet() {
