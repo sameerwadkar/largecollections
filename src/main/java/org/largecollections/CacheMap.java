@@ -75,8 +75,7 @@ public class CacheMap<K, V> implements Map<K, V>, IDb, Serializable, Closeable {
         this.bloomFilter = BloomFilter.create(myFunnel, this.bloomFilterSize);
     }
 
-    public CacheMap(String folder, String name, int cacheSize,
-            String comparatorCls) {
+    public CacheMap(String folder, String name, int cacheSize) {
         try {
             if (!StringUtils.isEmpty(name)) {
                 this.name = name;
@@ -99,22 +98,17 @@ public class CacheMap<K, V> implements Map<K, V>, IDb, Serializable, Closeable {
 
     }
 
-    public CacheMap(String folder, String name, int cacheSize) {
-        this(folder, name, cacheSize, null);
-    }
-
     public CacheMap(String folder, String name) {
-        this(folder, name, Constants.DEFAULT_CACHE_SIZE, null);
+        this(folder, name, Constants.DEFAULT_CACHE_SIZE);
     }
 
     public CacheMap(String folder) {
-        this(folder, "TMP" + rnd.nextInt(1000000),
-                Constants.DEFAULT_CACHE_SIZE, null);
+        this(folder, "TMP" + rnd.nextInt(1000000));
     }
 
     public CacheMap() {
         this(Constants.DEFAULT_FOLDER, "TMP" + rnd.nextInt(1000000),
-                Constants.DEFAULT_CACHE_SIZE, null);
+                Constants.DEFAULT_CACHE_SIZE);
     }
 
     public void setBloomFilterSize(int bFilterSize) {

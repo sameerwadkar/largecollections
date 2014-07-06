@@ -22,11 +22,7 @@ import java.util.Collection;
 import java.util.Iterator;
 import java.util.List;
 import java.util.ListIterator;
-import java.util.Map;
 import java.util.NoSuchElementException;
-import java.util.Random;
-
-import com.google.common.base.Throwables;
 
 import utils.SerializationUtils;
 /**
@@ -34,30 +30,13 @@ import utils.SerializationUtils;
  * once and read many times. An element can be added to the list but cannot be removed.
  * 
  */
-public class WriteOnceReadManyArrayList<V> implements List<V>,Serializable,Closeable {
+public class WriteOnceReadManyArrayListOld<V> implements List<V>,Serializable,Closeable {
     public  static final long serialVersionUID = 1l;
-    private final static Random rnd = new Random();
-    protected Map<Integer,V> valueByIndex = null;
-    protected Map<V,Integer> indexByValue = null;
-    protected MapFactory factory = null;
+    protected CacheMap<Integer,V> valueByIndex = null;
+    protected CacheMap<V,Integer> indexByValue = null;
     protected transient SerializationUtils<Object,V> sdUtils = new SerializationUtils<Object,V>();
     
-    
-    public WriteOnceReadManyArrayList(String folder, String name, int cacheSize) {
-        this.factory = new MapFactory(folder,name,cacheSize);
-        valueByIndex=this.factory.getMap("V");
-        indexByValue = this.factory.getMap("I");
-    }
-    public WriteOnceReadManyArrayList(String folder, String name) {
-        this(folder, name, Constants.DEFAULT_CACHE_SIZE);
-    }
-
-    public WriteOnceReadManyArrayList(String folder) {
-        this(folder, "TMP" + rnd.nextInt(1000000));
-    }
-
-
-    public WriteOnceReadManyArrayList(){
+    public WriteOnceReadManyArrayListOld(){
         valueByIndex = new CacheMap<Integer,V>();
         indexByValue = new CacheMap<V,Integer>();
         
@@ -210,11 +189,11 @@ public class WriteOnceReadManyArrayList<V> implements List<V>,Serializable,Close
     }
 
     private final class MyIterator<V> implements Iterator<V> {
-        private WriteOnceReadManyArrayList list = null;
+        private WriteOnceReadManyArrayListOld list = null;
 
         int size = -1;
         int index =-1;
-        protected MyIterator(WriteOnceReadManyArrayList list){
+        protected MyIterator(WriteOnceReadManyArrayListOld list){
            this.list = list;
            this.size=list.size();
         }
@@ -241,15 +220,15 @@ public class WriteOnceReadManyArrayList<V> implements List<V>,Serializable,Close
         
     }
     private final class MyListIterator<V> implements ListIterator<V> {
-        private WriteOnceReadManyArrayList list = null;
+        private WriteOnceReadManyArrayListOld list = null;
 
         int size = -1;
         int index =-1;
-        protected MyListIterator(WriteOnceReadManyArrayList list){
+        protected MyListIterator(WriteOnceReadManyArrayListOld list){
            this.list = list;
            this.size=list.size();
         }
-        protected MyListIterator(WriteOnceReadManyArrayList list,int index){
+        protected MyListIterator(WriteOnceReadManyArrayListOld list,int index){
             list = list;
             this.size=list.size();
             this.index = this.index-1;
@@ -315,7 +294,8 @@ public class WriteOnceReadManyArrayList<V> implements List<V>,Serializable,Close
             throw new UnsupportedOperationException();
         }    
     }
-    public void close()  {
-        this.factory.close();
+    public void close() throws IOException {
+        this.indexByValue.close();
+        this.valueByIndex.close();        
     }
 }
