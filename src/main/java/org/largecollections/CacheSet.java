@@ -37,7 +37,11 @@ import org.iq80.leveldb.Options;
 import utils.DBUtils;
 import utils.SerializationUtils;
 
+import com.google.common.base.Preconditions;
 import com.google.common.base.Throwables;
+import com.google.common.hash.BloomFilter;
+import com.google.common.hash.Funnel;
+import com.google.common.hash.PrimitiveSink;
 
 public  class CacheSet<K> implements Set<K>,Closeable,IDb {
     public  static final long serialVersionUID = 10l;
@@ -52,6 +56,32 @@ public  class CacheSet<K> implements Set<K>,Closeable,IDb {
     protected transient Options options;
     protected transient File dbFile;
     protected transient SerializationUtils<Integer,List<? extends K>> serdeUtils = new SerializationUtils<Integer,List<? extends K>>();
+   
+    private int bloomFilterSize = 10000000;
+    protected  transient Funnel<Integer> myFunnel = null;
+    private BloomFilter<Integer> bloomFilter = null;
+    
+    public void setBloomFilterSize(int bFilterSize) {
+        Preconditions
+                .checkState(this.size() == 0,
+                        "Cannot reset bloom filter size when the map has non-zero size");
+        Preconditions.checkArgument(bFilterSize <= 0,
+                "Bloom Filter must have a non-zero estimated size");
+        this.bloomFilterSize = bFilterSize;
+        this.initializeBloomFilter();
+
+    }
+
+    private void initializeBloomFilter(){
+        this.myFunnel = new Funnel<Integer>() {
+            public void funnel(Integer obj, PrimitiveSink into) {
+                into.putInt(obj);
+                  
+              }
+            };  
+        this.bloomFilter = BloomFilter.create(myFunnel, this.bloomFilterSize);
+    }
+    
     
     public CacheSet(String folder, String name, int cacheSize,
             String comparatorCls) {
@@ -114,17 +144,21 @@ public  class CacheSet<K> implements Set<K>,Closeable,IDb {
         return vals;
     }
     public boolean contains(Object key) {
-        List<K> vals = getListByHashCode(key.hashCode());
-        if(vals!=null && vals.size()>0){
-            for(Object v:vals){
-                if(v.equals(key)){
-                    return true;
+        if (bloomFilter.mightContain(key.hashCode())) {
+            List<K> vals = getListByHashCode(key.hashCode());
+            if(vals!=null && vals.size()>0){
+                for(Object v:vals){
+                    if(v.equals(key)){
+                        return true;
+                    }
                 }
             }
+            else{
+                return false;
+            }
         }
-        else{
-            return false;
-        }
+        
+
         return false;
     }
 
@@ -164,6 +198,7 @@ public  class CacheSet<K> implements Set<K>,Closeable,IDb {
            vals.remove(e);
            vals.add(e);
         }
+        this.bloomFilter.put(e.hashCode());
         db.put(serdeUtils.serializeKey(e.hashCode()),serdeUtils.serializeValue(vals));
         return !contains;
     }
@@ -209,6 +244,7 @@ public  class CacheSet<K> implements Set<K>,Closeable,IDb {
             
         }
         this.size=0;
+        this.initializeBloomFilter();
     }
 
     public boolean containsAll(Collection<?> c) {
@@ -360,6 +396,20 @@ public  class CacheSet<K> implements Set<K>,Closeable,IDb {
     public DB getDB() {
         // TODO Auto-generated method stub
         return this.db;
+    }
+    
+    public void optimize() {
+        try {
+            this.initializeBloomFilter();
+            DBIterator iter = this.db.iterator();
+            while(iter.hasNext()){
+                Entry<byte[],byte[]> e = iter.next();
+                Integer i = this.serdeUtils.deserializeKey(e.getKey());
+                this.bloomFilter.put(i);
+            }
+        } catch (Exception ex) {
+             Throwables.propagate(ex);
+        }
     }
 
 }

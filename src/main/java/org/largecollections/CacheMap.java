@@ -25,7 +25,6 @@ import java.util.Collection;
 import java.util.Map;
 import java.util.Random;
 import java.util.Set;
-import java.util.Map.Entry;
 
 import org.apache.commons.lang.StringUtils;
 import org.iq80.leveldb.DB;
@@ -40,7 +39,6 @@ import com.google.common.base.Preconditions;
 import com.google.common.base.Throwables;
 import com.google.common.hash.BloomFilter;
 import com.google.common.hash.Funnel;
-import com.google.common.hash.Funnels;
 import com.google.common.hash.PrimitiveSink;
 
 /**

@@ -19,6 +19,9 @@ import static org.fusesource.leveldbjni.JniDBFactory.factory;
 
 import java.io.Closeable;
 import java.util.List;
+import java.util.Map.Entry;
+
+import org.iq80.leveldb.DBIterator;
 
 import com.google.common.base.Throwables;
 
@@ -44,5 +47,8 @@ public class ListFactory<V> implements Closeable {
         } catch (Exception ex) {
             Throwables.propagate(ex);
         }
+    }
+    public void optimize() {
+        this.factory.optimize();
     }
 }

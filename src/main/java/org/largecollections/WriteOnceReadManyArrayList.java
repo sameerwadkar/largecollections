@@ -337,4 +337,7 @@ public class WriteOnceReadManyArrayList<V> implements List<V>, Serializable,
     public void close() {
         this.factory.close();
     }
+    public void optimize() {
+        this.factory.optimize();
+    }
 }
