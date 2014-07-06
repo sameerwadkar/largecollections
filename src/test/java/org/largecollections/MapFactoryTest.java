@@ -125,8 +125,7 @@ public class MapFactoryTest {
        factory = (MapFactory<String,String>)FileSerDeUtils.deserializeFromFile(serializedFile);
        map21 = factory.getMap(name1);
        map22 = factory.getMap(name2);
-       Assert.assertEquals(5, map21.size());
-      
+       Assert.assertEquals(5, map21.size());      
        Assert.assertEquals(4, map22.size());
    }
    @Test

@@ -109,7 +109,7 @@ public class MapFactory<K, V> implements Serializable, Closeable {
         Preconditions.checkState(this.myMaps.size()==0,"Cannot reset bloom filter after Factory has generated maps");
         Preconditions.checkArgument(bFilterSize<=0, "Bloom Filter must have a non-zero estimated size");
         this.bloomFilterSize=bFilterSize;
-        this.bloomFilter = BloomFilter.create(myFunnel, this.bloomFilterSize);
+        this.initializeBloomFilter();
     }
 
     public Map<K, V> getMap(String cacheName) {

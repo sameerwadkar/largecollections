@@ -38,7 +38,9 @@ import utils.SerializationUtils;
 import com.google.common.base.Preconditions;
 import com.google.common.base.Throwables;
 import com.google.common.hash.BloomFilter;
+import com.google.common.hash.Funnel;
 import com.google.common.hash.Funnels;
+import com.google.common.hash.PrimitiveSink;
 
 /**
  * CacheMap is a true implementation of Map. Unlike FastHashMap which operates
@@ -60,8 +62,18 @@ public class CacheMap<K, V> implements Map<K, V>, IDb, Serializable, Closeable {
 
     private SerializationUtils<K, V> serdeUtils = new SerializationUtils<K, V>();
     private int bloomFilterSize = 10000000;
-    private BloomFilter<byte[]> bloomFilter = BloomFilter.create(
-            Funnels.byteArrayFunnel(), this.bloomFilterSize);
+    protected  transient Funnel<K> myFunnel = null;
+    private BloomFilter<K> bloomFilter = null;
+    
+    private void initializeBloomFilter(){
+        this.myFunnel = new Funnel<K>() {
+            public void funnel(K obj, PrimitiveSink into) {
+                into.putInt(Math.abs(obj.hashCode()));
+                  
+              }
+            };  
+        this.bloomFilter = BloomFilter.create(myFunnel, this.bloomFilterSize);
+    }
 
     public CacheMap(String folder, String name, int cacheSize,
             String comparatorCls) {
@@ -79,6 +91,7 @@ public class CacheMap<K, V> implements Map<K, V>, IDb, Serializable, Closeable {
             this.db = (DB) m.get(Constants.DB_KEY);
             this.options = (Options) m.get(Constants.DB_OPTIONS_KEY);
             this.dbFile = (File) m.get(Constants.DB_FILE_KEY);
+            this.initializeBloomFilter();
 
         } catch (Exception ex) {
             Throwables.propagate(ex);
@@ -111,14 +124,15 @@ public class CacheMap<K, V> implements Map<K, V>, IDb, Serializable, Closeable {
         Preconditions.checkArgument(bFilterSize <= 0,
                 "Bloom Filter must have a non-zero estimated size");
         this.bloomFilterSize = bFilterSize;
-        this.bloomFilter = BloomFilter.create(Funnels.byteArrayFunnel(),
-                this.bloomFilterSize);
+        this.initializeBloomFilter();
+
     }
 
     public boolean containsKey(Object key) {
-        byte[] keyBytes = this.serdeUtils.serializeKey((K) key);
+        
         byte[] valBytes = null;
-        if (bloomFilter.mightContain(keyBytes)) {
+        if (bloomFilter.mightContain((K)key)) {
+            byte[] keyBytes = this.serdeUtils.serializeKey((K) key);
             valBytes = db.get(keyBytes);
         }
         return valBytes != null;
@@ -132,9 +146,10 @@ public class CacheMap<K, V> implements Map<K, V>, IDb, Serializable, Closeable {
     public V get(Object key) {
         if (key == null) {
             throw new RuntimeException("Nulls are not allowed as key");
-        }
-        byte[] keyArr = serdeUtils.serializeKey((K) key);
-        if (bloomFilter.mightContain(keyArr)) {
+        } 
+        
+        if (bloomFilter.mightContain((K) key)) {
+            byte[] keyArr = serdeUtils.serializeKey((K) key);
             byte[] vbytes = db.get(keyArr);
             if (vbytes == null) {
                 return null;
@@ -158,7 +173,7 @@ public class CacheMap<K, V> implements Map<K, V>, IDb, Serializable, Closeable {
     public V put(K key, V value) {
         if (!this.containsKey(key)) {
             byte[] fullKeyArr = serdeUtils.serializeKey(key);
-            bloomFilter.put(fullKeyArr);
+            bloomFilter.put(key);
             db.put(fullKeyArr, serdeUtils.serializeValue(value));
             size++;
         } else {
@@ -185,11 +200,11 @@ public class CacheMap<K, V> implements Map<K, V>, IDb, Serializable, Closeable {
             for (Map.Entry<? extends K, ? extends V> e : m.entrySet()) {
                 byte[] keyArr = serdeUtils.serializeKey(e.getKey());
                 V v = this.get(e.getKey());
-                if (this.size > 0) {
+                if (this.size > 0  && this.bloomFilter.mightContain(e.getKey())) {
                     v = this.get(e.getKey());
                 }
                 if (v == null) {  
-                    bloomFilter.put(keyArr);
+                    bloomFilter.put(e.getKey());
                     this.size++;
                 }
                 batch.put(keyArr,
@@ -228,7 +243,7 @@ public class CacheMap<K, V> implements Map<K, V>, IDb, Serializable, Closeable {
         this.size = in.readInt();
         this.serdeUtils = (SerializationUtils<K, V>) in.readObject();
         this.bloomFilterSize = in.readInt();
-        this.bloomFilter = (BloomFilter<byte[]>) in.readObject();
+        this.bloomFilter = (BloomFilter<K>) in.readObject();
         Map m = DBUtils.createDB(this.folder, this.name, this.cacheSize);
         this.db = (DB) m.get(Constants.DB_KEY);
         this.options = (Options) m.get(Constants.DB_OPTIONS_KEY);
@@ -243,7 +258,7 @@ public class CacheMap<K, V> implements Map<K, V>, IDb, Serializable, Closeable {
             this.db.delete(e.getKey());
             this.size--;
         }
-        bloomFilter= BloomFilter.create(Funnels.byteArrayFunnel(), bloomFilterSize);
+        this.initializeBloomFilter();
     }
 
     public Set<K> keySet() {
@@ -260,6 +275,7 @@ public class CacheMap<K, V> implements Map<K, V>, IDb, Serializable, Closeable {
 
     public void close() throws IOException {
         try {
+            this.initializeBloomFilter();
             this.db.close();
             factory.destroy(this.dbFile, this.options);
         } catch (Exception ex) {
