@@ -20,14 +20,13 @@ import static org.fusesource.leveldbjni.JniDBFactory.factory;
 import java.io.Closeable;
 import java.io.File;
 import java.io.IOException;
-import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.Map.Entry;
 import java.util.Random;
 import java.util.Set;
-import java.util.Map.Entry;
 
 import org.apache.commons.lang.StringUtils;
 import org.iq80.leveldb.DB;
@@ -143,7 +142,7 @@ public class CacheSetWithUnqToString<K> implements Set<K>, Closeable, IDb {
 
     // @TODO - The Iterators need to reflect this change
     public Iterator<K> iterator() {
-        return new MapValueIterator<K>(this.getDB());
+        return new SetValueIterator<K>(this);
     }
 
     public Object[] toArray() {
@@ -271,7 +270,7 @@ public class CacheSetWithUnqToString<K> implements Set<K>, Closeable, IDb {
     }
 
     public DB getDB() {
-        // TODO Auto-generated method stub
+
         return this.db;
     }
 
@@ -287,5 +286,63 @@ public class CacheSetWithUnqToString<K> implements Set<K>, Closeable, IDb {
         } catch (Exception ex) {
              Throwables.propagate(ex);
         }
+    }
+    
+    private final class SetValueIterator<K> implements Iterator<K> {
+        private CacheSetWithUnqToString<K> cacheSet = null;
+        private DBIterator iter = null;
+        private DB db = null;
+        protected transient SerializationUtils<String,List<K>> sdUtils = new SerializationUtils<String,List<K>>();
+        
+        Iterator<K> currentListIterator = null;
+        boolean containsValues =  false;
+        
+        private  Iterator<K>  getListIterator(byte[] value){
+            List<K> currentList = sdUtils.deserializeValue(value);
+            return currentList.iterator();
+        }
+        
+        private void initializeNext(){
+            if(this.iter.hasNext()){
+                containsValues=true;
+                Entry<byte[], byte[]> entry = this.iter.next();
+                Iterator<K>currentListIterator = getListIterator(entry.getValue());
+            }
+        }
+        protected SetValueIterator(CacheSetWithUnqToString set) {
+            this.cacheSet = set;
+            this.db = ((IDb)set).getDB();
+            this.iter = db.iterator();
+            this.iter.seekToFirst();
+
+        }
+
+        public boolean hasNext() {
+            if(!containsValues){
+                return false;
+            }
+            else{
+                if(currentListIterator.hasNext()){
+                    return currentListIterator.hasNext();
+                }
+                else{
+                    this.initializeNext();
+                    return currentListIterator.hasNext();
+                }
+            }
+        }
+
+        public K next() {
+            return currentListIterator.next();     
+        }
+
+        public void remove() {
+            K k = this.currentListIterator.next();
+            this.cacheSet.remove(k);
+            //this.currentListIterator.prev();
+            //No need to go back. The iterator of the List has already moved forward. 
+            //Only way to recreate it is to fetch back from this.db and which will return a fresh updated list
+        }
+
     }
 }
