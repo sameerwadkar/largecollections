@@ -118,7 +118,7 @@ public class MapFactoryTest {
        Assert.assertEquals(5, map21.size());
       
        Assert.assertEquals(4, map22.size());
-       factory.reindexBloomFilter();
+       //factory.reindexBloomFilter();
        
        FileSerDeUtils.serializeToFile(factory, serializedFile);
        

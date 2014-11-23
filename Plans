@@ -1,0 +1,10 @@
+IntString
+StringInt
+IntFloat
+IntDouble
+StringString
+
+SerSer
+WritableWritable
+SerWritable
+WritableSer
