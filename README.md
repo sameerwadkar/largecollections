@@ -1,5 +1,6 @@
-Large Collections
+Large Collections (RETIRED)
 ================
+This library has not been replaced by https://github.com/sameeraxiomine/LargeCollections which provides significantly improved performance.
 
 Java Collections implementation that uses Off-Heap Memory to Scale to millions of elements without running in to GC errors. 
 It utilizes the LevelDB project from Google to achieve this. 
